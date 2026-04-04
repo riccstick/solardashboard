@@ -61,12 +61,12 @@ while true; do
   clear
   echo -e "${BOLD}⚡ Fronius Energy Dashboard${RESET}"
   echo "================================================"
-  echo -e "🔋 Battery: ${GREEN}${soc}%${RESET}   🌡️  ${BLUE}${temp} °C${RESET} (${MAGENTA}${BATT_STATE}${RESET})"
+  echo -e "Battery: ${GREEN}${soc}%${RESET}    ${RED}${temp} °C${RESET} (${MAGENTA}${BATT_STATE}${RESET})"
   echo ""
   echo -e "☀️  PV        : ${YELLOW}$(scale_power "$p_pv")${RESET} (${BOLD}${PV_STATE}${RESET})"
-  echo -e "🏠 Load      : ${CYAN}$(scale_power "$p_load")${RESET} (${BOLD}${LOAD_STATE}${RESET})"
-  echo -e "🔌 Grid      : ${RED}$(scale_power "$p_grid")${RESET} (${BOLD}${GRID_STATE}${RESET})"
-  echo -e "🔋 Battery   : ${MAGENTA}$(scale_power "$p_batt")${RESET} (${BOLD}${BATT_STATE}${RESET})"
+  echo -e "Load      : ${CYAN}$(scale_power "$p_load")${RESET} (${BOLD}${LOAD_STATE}${RESET})"
+  echo -e "Grid      : ${RED}$(scale_power "$p_grid")${RESET} (${BOLD}${GRID_STATE}${RESET})"
+  echo -e "Battery   : ${MAGENTA}$(scale_power "$p_batt")${RESET} (${BOLD}${BATT_STATE}${RESET})"
   echo ""
   echo -e "♻️  Self-consumption: ${GREEN}${self_use}%${RESET}"
 
