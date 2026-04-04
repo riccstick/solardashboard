@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Solar Dashboard</title>
+
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: "Segoe UI", Arial;
+            background: #f3f4f6;
+            text-align: center;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 220px 1fr;
+            grid-template-rows: 180px 220px;
+            align-items: center;
+            justify-items: center;
+            margin-top: 60px;
+        }
+
+        .node { text-align: center; }
+
+        .circle {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 48px;
+            color: white;
+            position: relative;
+            box-shadow: inset 0 -6px 16px rgba(0,0,0,0.12);
+        }
+
+        .pv { background: #e8b23c; }
+        .house { background: #7f9fb5; }
+        .gridc { background: #6b737a; }
+
+        /* Battery */
+        .battery {
+            background: #2c2f36;
+            overflow: hidden;            /* 🔥 IMPORTANT */
+            border-radius: 50%;          /* ensure clipping */
+        }
+
+        .battery-fill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 0%;
+            border-radius: 0 0 50% 50%;  /* rounded bottom */
+            transition: height 0.6s ease;
+        }
+
+        .battery-text {
+            position: relative;
+            z-index: 2;
+            font-size: 30px;
+            font-weight: 500;
+        }
+
+        .value {
+            margin-top: 14px;
+            font-size: 28px;
+            color: #2f2f2f;
+            font-weight: 500;
+        }
+
+        /* Flow lines */
+        .line {
+            position: absolute;
+            background: #d0d3d8;
+            border-radius: 2px;
+        }
+
+        .horizontal { height: 3px; width: 170px; }
+        .vertical { width: 3px; height: 170px; }
+
+        .dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            position: absolute;
+        }
+
+        @keyframes moveRight {
+            from { left: -5%; }
+            to { left: 105%; }
+        }
+
+        @keyframes moveLeft {
+            from { left: 105%; }
+            to { left: -5%; }
+        }
+
+        @keyframes moveDown {
+            from { top: -5%; }
+            to { top: 105%; }
+        }
+
+        @keyframes moveUp {
+            from { top: 105%; }
+            to { top: -5%; }
+        }
+
+        /* Alignment */
+        #line-pv {
+            top: 155px;
+            left: calc(50% - 1.5px);
+        }
+
+        #line-batt {
+            top: calc(50% + 10px);
+            left: calc(50% - 240px);
+        }
+
+        #line-grid {
+            top: calc(50% + 10px);
+            left: calc(50% + 80px);
+        }
+        #pv {
+            grid-column: 2;
+            grid-row: 1;
+        }
+
+        #battery {
+            grid-column: 1;
+            grid-row: 2;
+        }
+
+        #house {
+            grid-column: 2;
+            grid-row: 2;
+        }
+
+        #grid {
+            grid-column: 3;
+            grid-row: 2;
+        }
+        canvas {
+            margin-top: 50px;
+            max-width: 650px;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="grid">
+
+    <div id="pv" class="node">
+        <div class="circle pv"><i class="fas fa-sun"></i></div>
+        <div id="p_pv" class="value">--</div>
+    </div>
+
+    <div id="battery" class="node">
+        <div class="circle battery">
+            <div id="batteryFill" class="battery-fill"></div>
+            <div id="soc" class="battery-text">--%</div>
+        </div>
+        <div id="p_batt" class="value">--</div>
+    </div>
+
+    <div id="house" class="node">
+        <div class="circle house"><i class="fas fa-home"></i></div>
+        <div id="p_load" class="value">--</div>
+    </div>
+
+    <div id="grid" class="node">
+        <div class="circle gridc"><i class="fas fa-bolt"></i></div>
+        <div id="p_grid" class="value">--</div>
+    </div>
+
+</div>
+
+<!-- Flow lines -->
+<div class="line vertical" id="line-pv"></div>
+<div class="line horizontal" id="line-batt"></div>
+<div class="line horizontal" id="line-grid"></div>
+
+<canvas id="chart"></canvas>
+
+<script>
+function parsePower(v) {
+    if (!v) return 0;
+    if (v.includes("kW")) return parseFloat(v) * 1000;
+    return parseFloat(v);
+}
+
+function createDots(line, direction, color) {
+    line.innerHTML = "";
+
+    for (let i = 0; i < 5; i++) {
+        const dot = document.createElement("div");
+        dot.className = "dot";
+        dot.style.background = color;
+        dot.style.boxShadow = `0 0 8px ${color}`;
+        dot.style.animation = `${direction} 2.5s linear infinite`;
+        dot.style.animationDelay = (i * 0.5) + "s";
+        line.appendChild(dot);
+    }
+}
+
+function setFlow(line, active, direction, color) {
+    if (!active) {
+        line.innerHTML = "";
+        return;
+    }
+    createDots(line, direction, color);
+}
+
+
+async function updateData() {
+    try {
+        const res = await fetch('/data');
+        const data = await res.json();
+        if (data.error) return;
+
+        document.getElementById('p_pv').innerText = data.p_pv;
+        document.getElementById('p_load').innerText = data.p_load;
+        document.getElementById('p_grid').innerText = data.p_grid;
+        document.getElementById('p_batt').innerText = data.p_batt;
+
+        const soc = data.soc;
+        document.getElementById('soc').innerText = soc + "%";
+
+        const p_pv = parsePower(data.p_pv);
+        const p_grid = parsePower(data.p_grid);
+        const p_batt = parsePower(data.p_batt);
+
+        /* Battery fill */
+        const batteryFill = document.getElementById('batteryFill');
+        batteryFill.style.height = soc + "%";
+
+        if (p_batt > 0) {
+            batteryFill.style.background = "linear-gradient(to top, #4caf50, #66bb6a)";
+        } else if (p_batt < 0) {
+            batteryFill.style.background = "linear-gradient(to top, #2196f3, #64b5f6)";
+        } else {
+            batteryFill.style.background = "linear-gradient(to top, #888, #aaa)";
+        }
+
+        /* Flows */
+        setFlow(document.getElementById('line-pv'), p_pv > 0, "moveDown", "#f5b942");
+
+        if (p_batt > 0)
+            setFlow(document.getElementById('line-batt'), true, "moveRight", "#4caf50");
+        else if (p_batt < 0)
+            setFlow(document.getElementById('line-batt'), true, "moveLeft", "#2196f3");
+        else
+            setFlow(document.getElementById('line-batt'), false);
+
+        if (p_grid > 0)
+            setFlow(document.getElementById('line-grid'), true, "moveLeft", "#ff4d4d");
+        else if (p_grid < 0)
+            setFlow(document.getElementById('line-grid'), true, "moveRight", "#4caf50");
+        else
+            setFlow(document.getElementById('line-grid'), false);
+
+        updateChart(p_pv);
+
+    } catch (err) {
+        console.error(err);
+    }
+}
+
+setInterval(updateData, 2000);
+updateData();
+</script>
+
+</body>
+</html>
