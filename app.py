@@ -1,9 +1,14 @@
+import os
+
 from flask import Flask, jsonify, render_template
+from dotenv import load_dotenv
 import requests
+
+load_dotenv()
 
 app = Flask(__name__)
 
-FRONIUS_IP = "192.168.1.142"
+FRONIUS_IP = os.environ.get("FRONIUS_IP", "192.168.1.142")
 STORAGE_API = f"http://{FRONIUS_IP}/solar_api/v1/GetStorageRealtimeData.cgi"
 POWERFLOW_API = f"http://{FRONIUS_IP}/solar_api/v1/GetPowerFlowRealtimeData.fcgi"
 
