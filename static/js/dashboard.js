@@ -82,6 +82,18 @@ function setFlow(layerId, active, path, colorClass, count) {
     createAnimatedDots(layer, path, colorClass, count);
 }
 
+function updateClock() {
+    const now = new Date();
+    const timeString = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+    const dateString = now.toLocaleDateString([], { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+
+    const timeEl = document.getElementById("clock-time");
+    const dateEl = document.getElementById("clock-date");
+
+    if (timeEl) timeEl.innerText = timeString;
+    if (dateEl) dateEl.innerText = dateString;
+}
+
 async function updateData() {
     try {
         const response = await fetch("/data");
@@ -139,6 +151,9 @@ async function updateData() {
 }
 
 window.addEventListener("DOMContentLoaded", () => {
+    updateClock();
+    window.setInterval(updateClock, 1000);
+
     updateData();
     window.setInterval(updateData, 2000);
 });

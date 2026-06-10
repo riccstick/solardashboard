@@ -15,6 +15,9 @@ body {
 .panel-header {
     padding: 14px 0 10px;
     border-bottom: 3px solid #ebebe7;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
 }
 
 .panel-header h1 {
@@ -23,6 +26,25 @@ body {
     font-size: clamp(1.6rem, 4vw, 2.3rem);
     font-weight: 500;
     letter-spacing: 0.06em;
+}
+
+.clock {
+    text-align: right;
+    line-height: 1.25;
+}
+
+#clock-time {
+    color: #8e928f;
+    font-size: clamp(1.3rem, 3vw, 1.9rem);
+    font-weight: 500;
+    letter-spacing: 0.04em;
+}
+
+#clock-date {
+    color: #adb0ae;
+    font-size: clamp(0.75rem, 1.6vw, 1rem);
+    font-weight: 400;
+    letter-spacing: 0.03em;
 }
 
 .diagram-board {
