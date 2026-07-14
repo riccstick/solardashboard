@@ -21,10 +21,10 @@
     <section class="diagram-board" aria-label="Power flow diagram">
         <svg class="diagram-flow" viewBox="0 0 760 760" role="img" aria-hidden="true">
             <g>
-                <path class="flow-track" d="M258 258 L310 310" />
-                <path class="flow-track" d="M502 258 L450 310" />
-                <path class="flow-track" d="M502 502 L450 450" />
-                <path class="flow-track" d="M258 502 L310 450" />
+                <path id="track-pv" class="flow-track" />
+                <path id="track-house" class="flow-track" />
+                <path id="track-battery" class="flow-track" />
+                <path id="track-grid" class="flow-track" />
             </g>
             <g id="flow-pv"></g>
             <g id="flow-house"></g>
@@ -54,6 +54,7 @@
                 <div class="battery-content">
                     <i class="fas fa-battery-three-quarters"></i>
                     <div id="soc" class="battery-text">0%</div>
+                    <div id="battery-temp" class="battery-temperature" title="Battery cell temperature">-- °C</div>
                 </div>
             </div>
         </div>
@@ -66,6 +67,24 @@
             </div>
         </div>
     </section>
+
+    <section class="daily-energy" aria-label="Today's energy totals">
+        <article class="energy-card energy-card--used">
+            <i class="fas fa-house" aria-hidden="true"></i>
+            <div>
+                <div class="energy-label">Home used today</div>
+                <div id="energy-used-today" class="energy-value">0.00 kWh</div>
+            </div>
+        </article>
+        <article class="energy-card energy-card--exported">
+            <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
+            <div>
+                <div class="energy-label">Sent to grid today</div>
+                <div id="energy-exported-today" class="energy-value">0.00 kWh</div>
+            </div>
+        </article>
+    </section>
+    <p class="energy-note">Calculated from realtime samples while the dashboard is running.</p>
 </main>
 
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>

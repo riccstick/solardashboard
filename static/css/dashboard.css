@@ -192,6 +192,13 @@ body {
     font-weight: 600;
 }
 
+.battery-temperature {
+    color: #526657;
+    font-size: clamp(0.72rem, 1.5vw, 1rem);
+    font-weight: 600;
+    line-height: 1;
+}
+
 .hub {
     position: absolute;
     top: 50%;
@@ -221,6 +228,53 @@ body {
     font-size: clamp(2rem, 4vw, 3rem);
 }
 
+.daily-energy {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin: -12px auto 0;
+}
+
+.energy-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 18px 22px;
+    border: 1px solid #292d31;
+    border-radius: 14px;
+    background: #111315;
+    text-align: left;
+}
+
+.energy-card > i {
+    width: 42px;
+    color: #77b2d6;
+    font-size: 1.65rem;
+    text-align: center;
+}
+
+.energy-card--exported > i {
+    color: #a7a7a7;
+}
+
+.energy-label {
+    margin-bottom: 4px;
+    color: #929895;
+    font-size: 0.88rem;
+}
+
+.energy-value {
+    color: #e3e5e4;
+    font-size: clamp(1.25rem, 3vw, 1.8rem);
+    font-weight: 600;
+}
+
+.energy-note {
+    margin: 9px 0 0;
+    color: #686d6a;
+    font-size: 0.75rem;
+}
+
 @media (max-width: 560px) {
     .dashboard-layout {
         width: calc(100vw - 16px);
@@ -236,5 +290,10 @@ body {
 
     .circle {
         box-shadow: 0 0 0 8px rgba(255, 255, 255, 0.68);
+    }
+
+    .daily-energy {
+        grid-template-columns: 1fr;
+        margin-top: -4px;
     }
 }

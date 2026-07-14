@@ -1,60 +1,98 @@
 const SVG_NS = "http://www.w3.org/2000/svg";
+const MIN_ACTIVE_POWER_W = 15;
 
-const FLOW_PATHS = {
-    pvToHub: "M258 258 L310 310",
-    houseToHub: "M502 258 L450 310",
-    batteryToHub: "M502 502 L450 450",
-    gridToHub: "M258 502 L310 450",
+const FLOW_CONFIG = {
+    pv: { node: "#pv .circle", track: "track-pv", layer: "flow-pv" },
+    house: { node: "#house .circle", track: "track-house", layer: "flow-house" },
+    battery: { node: "#battery .circle", track: "track-battery", layer: "flow-battery" },
+    grid: { node: "#grid .circle", track: "track-grid", layer: "flow-grid" },
 };
 
-function reverseLinePath(path) {
-    const match = path.match(/^M\s*([\d.]+)\s+([\d.]+)\s+L\s*([\d.]+)\s+([\d.]+)$/);
+const flowState = new Map();
+let flowPaths = {};
 
-    if (!match) {
-        return path;
-    }
+function numberFromPower(value) {
+    if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+    if (typeof value !== "string") return 0;
 
-    const [, startX, startY, endX, endY] = match;
-    return `M${endX} ${endY} L${startX} ${startY}`;
+    const parsed = Number.parseFloat(value);
+    if (!Number.isFinite(parsed)) return 0;
+    return /kW/i.test(value) ? parsed * 1000 : parsed;
 }
 
-function flowCountForPower(power) {
-    if (power === 0) {
-        return 0;
-    }
-
-    return Math.max(1, Math.min(4, Math.round(Math.abs(power) / 2000) + 1));
-}
-
-function parsePower(value) {
-    if (!value) {
-        return 0;
-    }
-
-    if (value.includes("kW")) {
-        return parseFloat(value) * 1000;
-    }
-
-    return parseFloat(value);
+function powerFromData(data, key) {
+    return numberFromPower(data[`${key}_w`] ?? data[key]);
 }
 
 function formatDisplayPower(power) {
-    const absolutePower = Math.abs(power);
-
-    if (absolutePower < 15) {
-        return "0 W";
-    }
-
-    if (absolutePower >= 1000) {
-        return `${(absolutePower / 1000).toFixed(2)} kW`;
-    }
-
-    return `${Math.round(absolutePower)} W`;
+    const magnitude = Math.abs(power);
+    if (magnitude < MIN_ACTIVE_POWER_W) return "0 W";
+    if (magnitude >= 1000) return `${(magnitude / 1000).toFixed(2)} kW`;
+    return `${Math.round(magnitude)} W`;
 }
 
-function createAnimatedDots(layer, path, colorClass, count = 3) {
-    layer.replaceChildren();
+function formatEnergy(value) {
+    const energy = Number(value);
+    return `${Number.isFinite(energy) ? energy.toFixed(2) : "0.00"} kWh`;
+}
 
+function flowCountForPower(power) {
+    return Math.max(1, Math.min(4, Math.ceil(Math.abs(power) / 2000)));
+}
+
+function reversePath(path) {
+    const points = path.match(/-?\d+(?:\.\d+)?/g);
+    if (!points || points.length !== 4) return path;
+    return `M ${points[2]} ${points[3]} L ${points[0]} ${points[1]}`;
+}
+
+function elementCircleInSvg(element, svgRect, scaleX, scaleY) {
+    const rect = element.getBoundingClientRect();
+    return {
+        x: (rect.left + rect.width / 2 - svgRect.left) * scaleX,
+        y: (rect.top + rect.height / 2 - svgRect.top) * scaleY,
+        radius: (Math.min(rect.width * scaleX, rect.height * scaleY) / 2) + 8,
+    };
+}
+
+function pathBetweenCircles(from, to) {
+    const dx = to.x - from.x;
+    const dy = to.y - from.y;
+    const distance = Math.hypot(dx, dy) || 1;
+    const ux = dx / distance;
+    const uy = dy / distance;
+    const start = { x: from.x + ux * from.radius, y: from.y + uy * from.radius };
+    const end = { x: to.x - ux * to.radius, y: to.y - uy * to.radius };
+    return `M ${start.x.toFixed(1)} ${start.y.toFixed(1)} L ${end.x.toFixed(1)} ${end.y.toFixed(1)}`;
+}
+
+function calculateFlowPaths() {
+    const svg = document.querySelector(".diagram-flow");
+    const hubElement = document.querySelector(".hub-outer");
+    if (!svg || !hubElement) return;
+
+    const svgRect = svg.getBoundingClientRect();
+    if (!svgRect.width || !svgRect.height) return;
+
+    const viewBox = svg.viewBox.baseVal;
+    const scaleX = viewBox.width / svgRect.width;
+    const scaleY = viewBox.height / svgRect.height;
+    const hub = elementCircleInSvg(hubElement, svgRect, scaleX, scaleY);
+
+    Object.entries(FLOW_CONFIG).forEach(([name, config]) => {
+        const nodeElement = document.querySelector(config.node);
+        if (!nodeElement) return;
+        const node = elementCircleInSvg(nodeElement, svgRect, scaleX, scaleY);
+        flowPaths[name] = pathBetweenCircles(node, hub);
+        document.getElementById(config.track)?.setAttribute("d", flowPaths[name]);
+    });
+
+    // Force active animations to adopt paths recalculated after a resize.
+    flowState.clear();
+}
+
+function createAnimatedDots(layer, path, colorClass, count) {
+    layer.replaceChildren();
     for (let index = 0; index < count; index += 1) {
         const dot = document.createElementNS(SVG_NS, "circle");
         dot.setAttribute("r", "8");
@@ -63,97 +101,97 @@ function createAnimatedDots(layer, path, colorClass, count = 3) {
         const motion = document.createElementNS(SVG_NS, "animateMotion");
         motion.setAttribute("dur", "2.8s");
         motion.setAttribute("repeatCount", "indefinite");
-        motion.setAttribute("begin", `${index * 0.45}s`);
+        motion.setAttribute("begin", `${index * 0.55}s`);
         motion.setAttribute("path", path);
-
         dot.appendChild(motion);
         layer.appendChild(dot);
     }
 }
 
-function setFlow(layerId, active, path, colorClass, count) {
-    const layer = document.getElementById(layerId);
+function setFlow(name, active, direction, colorClass, power) {
+    const config = FLOW_CONFIG[name];
+    const layer = document.getElementById(config.layer);
+    const basePath = flowPaths[name];
+    if (!layer || !basePath) return;
 
-    if (!active) {
-        layer.replaceChildren();
-        return;
-    }
+    const count = active ? flowCountForPower(power) : 0;
+    const path = direction === "to-node" ? reversePath(basePath) : basePath;
+    const signature = active ? `${path}|${colorClass}|${count}` : "off";
+    if (flowState.get(name) === signature) return;
 
-    createAnimatedDots(layer, path, colorClass, count);
+    flowState.set(name, signature);
+    if (!active) layer.replaceChildren();
+    else createAnimatedDots(layer, path, colorClass, count);
 }
 
 function updateClock() {
     const now = new Date();
-    const timeString = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-    const dateString = now.toLocaleDateString([], { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-
-    const timeEl = document.getElementById("clock-time");
-    const dateEl = document.getElementById("clock-date");
-
-    if (timeEl) timeEl.innerText = timeString;
-    if (dateEl) dateEl.innerText = dateString;
+    document.getElementById("clock-time").textContent = now.toLocaleTimeString([], {
+        hour: "2-digit", minute: "2-digit", second: "2-digit",
+    });
+    document.getElementById("clock-date").textContent = now.toLocaleDateString([], {
+        weekday: "long", year: "numeric", month: "long", day: "numeric",
+    });
 }
 
 async function updateData() {
     try {
-        const response = await fetch("/data");
+        const response = await fetch("/data", { cache: "no-store" });
+        if (!response.ok) throw new Error(`Data request failed (${response.status})`);
         const data = await response.json();
+        if (data.error) throw new Error(data.error);
 
-        if (data.error) {
-            return;
-        }
+        const pvPower = powerFromData(data, "p_pv");
+        const housePower = powerFromData(data, "p_load");
+        const gridPower = powerFromData(data, "p_grid");
+        const batteryPower = powerFromData(data, "p_batt");
 
-        const pvPower = parsePower(data.p_pv);
-        const housePower = parsePower(data.p_load);
-        const gridPower = parsePower(data.p_grid);
-        const batteryPower = parsePower(data.p_batt);
+        document.getElementById("p_pv").textContent = formatDisplayPower(pvPower);
+        document.getElementById("p_load").textContent = formatDisplayPower(housePower);
+        document.getElementById("p_grid").textContent = formatDisplayPower(gridPower);
+        document.getElementById("p_batt").textContent = formatDisplayPower(batteryPower);
 
-        document.getElementById("p_pv").innerText = formatDisplayPower(pvPower);
-        document.getElementById("p_load").innerText = formatDisplayPower(housePower);
-        document.getElementById("p_grid").innerText = formatDisplayPower(gridPower);
-        document.getElementById("p_batt").innerText = formatDisplayPower(batteryPower);
+        const soc = Math.max(0, Math.min(100, numberFromPower(data.soc)));
+        document.getElementById("soc").textContent = `${soc.toFixed(1).replace(".0", "")}%`;
+        document.getElementById("batteryFill").style.height = `${soc}%`;
 
-        const soc = data.soc;
-        document.getElementById("soc").innerText = `${soc}%`;
+        const temperature = data.temp === null || data.temp === "" ? Number.NaN : Number(data.temp);
+        document.getElementById("battery-temp").textContent = Number.isFinite(temperature)
+            ? `${temperature.toFixed(1)} °C`
+            : "-- °C";
+        document.getElementById("energy-used-today").textContent = formatEnergy(data.energy_used_today_kwh);
+        document.getElementById("energy-exported-today").textContent = formatEnergy(data.energy_exported_today_kwh);
 
-        const batteryFill = document.getElementById("batteryFill");
-        batteryFill.style.height = `${soc}%`;
+        const active = (power) => Math.abs(power) >= MIN_ACTIVE_POWER_W;
+        setFlow("pv", active(pvPower), "to-hub", "flow-dot--pv", pvPower);
+        setFlow("house", active(housePower), "to-node", "flow-dot--house", housePower);
 
-        if (batteryPower < 0) {
-            batteryFill.style.background = "linear-gradient(to top, #55b945, #bfeab7)";
-        } else if (batteryPower > 0) {
-            batteryFill.style.background = "linear-gradient(to top, #55b945, #bfeab7)";
-        } else {
-            batteryFill.style.background = "linear-gradient(to top, #ffffff, #ffffff)";
-        }
+        // This inverter reports positive P_Akku while discharging and negative
+        // P_Akku while charging.
+        setFlow("battery", active(batteryPower), batteryPower > 0 ? "to-hub" : "to-node",
+            batteryPower > 0 ? "flow-dot--battery-discharge" : "flow-dot--battery-charge", batteryPower);
 
-        setFlow("flow-pv", pvPower > 0, FLOW_PATHS.pvToHub, "flow-dot--pv", flowCountForPower(pvPower));
-        setFlow("flow-house", housePower > 0, reverseLinePath(FLOW_PATHS.houseToHub), "flow-dot--house", flowCountForPower(housePower));
-
-        if (batteryPower > 0) {
-            setFlow("flow-battery", true, FLOW_PATHS.batteryToHub, "flow-dot--battery-discharge", flowCountForPower(batteryPower));
-        } else if (batteryPower < 0) {
-            setFlow("flow-battery", true, reverseLinePath(FLOW_PATHS.batteryToHub), "flow-dot--battery-charge", flowCountForPower(batteryPower));
-        } else {
-            setFlow("flow-battery", false);
-        }
-
-        if (gridPower > 0) {
-            setFlow("flow-grid", true, FLOW_PATHS.gridToHub, "flow-dot--grid-import", flowCountForPower(gridPower));
-        } else if (gridPower < 0) {
-            setFlow("flow-grid", true, reverseLinePath(FLOW_PATHS.gridToHub), "flow-dot--grid-export", flowCountForPower(gridPower));
-        } else {
-            setFlow("flow-grid", false);
-        }
+        // Fronius: positive P_Grid is import; negative is export.
+        setFlow("grid", active(gridPower), gridPower > 0 ? "to-hub" : "to-node",
+            gridPower > 0 ? "flow-dot--grid-import" : "flow-dot--grid-export", gridPower);
     } catch (error) {
-        console.error(error);
+        console.error("Could not update dashboard:", error);
     }
 }
 
 window.addEventListener("DOMContentLoaded", () => {
+    calculateFlowPaths();
     updateClock();
-    window.setInterval(updateClock, 1000);
-
     updateData();
+    window.setInterval(updateClock, 1000);
     window.setInterval(updateData, 2000);
+
+    let resizeTimer;
+    window.addEventListener("resize", () => {
+        window.clearTimeout(resizeTimer);
+        resizeTimer = window.setTimeout(() => {
+            calculateFlowPaths();
+            updateData();
+        }, 120);
+    });
 });
