@@ -7,9 +7,16 @@ body {
 }
 
 .dashboard-layout {
-    width: min(820px, calc(100vw - 24px));
+    width: min(1340px, calc(100vw - 24px));
     margin: 0 auto;
     padding: 0 0 24px;
+}
+
+.dashboard-content {
+    display: grid;
+    grid-template-columns: minmax(210px, 1fr) minmax(560px, 760px) minmax(210px, 1fr);
+    align-items: center;
+    gap: 22px;
 }
 
 .panel-header {
@@ -49,7 +56,8 @@ body {
 
 .diagram-board {
     position: relative;
-    width: min(760px, calc(100vw - 24px));
+    width: 100%;
+    max-width: 760px;
     aspect-ratio: 1;
     margin: 0 auto;
 }
@@ -230,16 +238,16 @@ body {
 
 .daily-energy {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
-    margin: -12px auto 0;
+    grid-template-columns: 1fr;
+    gap: 18px;
 }
 
 .energy-card {
     display: flex;
     align-items: center;
     gap: 16px;
-    padding: 18px 22px;
+    min-width: 0;
+    padding: 18px;
     border: 1px solid #292d31;
     border-radius: 14px;
     background: #111315;
@@ -257,6 +265,27 @@ body {
     color: #a7a7a7;
 }
 
+.energy-card--imported > i {
+    color: #b5a17a;
+}
+
+.energy-card--autarky > i {
+    color: #66bf54;
+}
+
+.energy-card--solar > i,
+.energy-card--direct-solar > i {
+    color: #f4bb11;
+}
+
+.energy-card--self-use > i {
+    color: #66bf54;
+}
+
+.energy-card--savings > i {
+    color: #d8b958;
+}
+
 .energy-label {
     margin-bottom: 4px;
     color: #929895;
@@ -265,14 +294,44 @@ body {
 
 .energy-value {
     color: #e3e5e4;
-    font-size: clamp(1.25rem, 3vw, 1.8rem);
+    font-size: clamp(1.2rem, 2vw, 1.7rem);
     font-weight: 600;
+    white-space: nowrap;
 }
 
 .energy-note {
-    margin: 9px 0 0;
+    margin: -8px 0 0;
     color: #686d6a;
     font-size: 0.75rem;
+}
+
+@media (max-width: 1080px) {
+    .dashboard-layout {
+        width: min(820px, calc(100vw - 24px));
+    }
+
+    .dashboard-content {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+    }
+
+    .diagram-board {
+        grid-column: 1 / -1;
+        grid-row: 1;
+    }
+
+    .daily-energy {
+        grid-template-columns: 1fr;
+        gap: 14px;
+    }
+
+    .daily-energy--left {
+        grid-column: 1;
+    }
+
+    .daily-energy--right {
+        grid-column: 2;
+    }
 }
 
 @media (max-width: 560px) {
@@ -282,6 +341,10 @@ body {
 
     .diagram-board {
         width: calc(100vw - 16px);
+    }
+
+    .dashboard-content {
+        display: block;
     }
 
     .node {
@@ -294,6 +357,6 @@ body {
 
     .daily-energy {
         grid-template-columns: 1fr;
-        margin-top: -4px;
+        margin-top: 14px;
     }
 }

@@ -15,7 +15,14 @@ Copy `.env.example` to `.env` and set the Fronius inverter IP there.
 
 ```bash
 FRONIUS_IP=192.168.1.142
+ELECTRICITY_PRICE_PER_KWH=0.30
+FEED_IN_TARIFF_PER_KWH=0.08
+CURRENCY_SYMBOL=€
 ```
+
+The electricity price is used for solar energy consumed locally, and the
+feed-in tariff is used for energy exported to the grid. Adjust both values to
+match your contract so the dashboard's estimated daily value is meaningful.
 
 ## Structure
 

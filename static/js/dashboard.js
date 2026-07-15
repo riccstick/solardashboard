@@ -36,6 +36,16 @@ function formatEnergy(value) {
     return `${Number.isFinite(energy) ? energy.toFixed(2) : "0.00"} kWh`;
 }
 
+function formatPercentage(value) {
+    const percentage = Number(value);
+    return Number.isFinite(percentage) ? `${percentage.toFixed(1)} %` : "-- %";
+}
+
+function formatMoney(value, currency = "€") {
+    const amount = Number(value);
+    return `${currency}${Number.isFinite(amount) ? amount.toFixed(2) : "0.00"}`;
+}
+
 function flowCountForPower(power) {
     return Math.max(1, Math.min(4, Math.ceil(Math.abs(power) / 2000)));
 }
@@ -161,6 +171,14 @@ async function updateData() {
             : "-- °C";
         document.getElementById("energy-used-today").textContent = formatEnergy(data.energy_used_today_kwh);
         document.getElementById("energy-exported-today").textContent = formatEnergy(data.energy_exported_today_kwh);
+        document.getElementById("energy-imported-today").textContent = formatEnergy(data.energy_imported_today_kwh);
+        document.getElementById("self-sufficiency-today").textContent = formatPercentage(data.self_sufficiency_today_pct);
+        document.getElementById("solar-generated-today").textContent = formatEnergy(data.solar_generated_today_kwh);
+        document.getElementById("direct-solar-today").textContent = formatEnergy(data.direct_solar_today_kwh);
+        document.getElementById("self-consumption-today").textContent = formatPercentage(data.self_consumption_today_pct);
+        document.getElementById("estimated-value-today").textContent = formatMoney(
+            data.estimated_value_today, data.currency_symbol,
+        );
 
         const active = (power) => Math.abs(power) >= MIN_ACTIVE_POWER_W;
         setFlow("pv", active(pvPower), "to-hub", "flow-dot--pv", pvPower);

@@ -18,6 +18,38 @@
         </div>
     </header>
 
+    <div class="dashboard-content">
+    <aside class="daily-energy daily-energy--left" aria-label="Today's home energy totals">
+        <article class="energy-card energy-card--used">
+            <i class="fas fa-house" aria-hidden="true"></i>
+            <div>
+                <div class="energy-label">Home used today</div>
+                <div id="energy-used-today" class="energy-value">0.00 kWh</div>
+            </div>
+        </article>
+        <article class="energy-card energy-card--imported">
+            <i class="fas fa-arrow-down" aria-hidden="true"></i>
+            <div>
+                <div class="energy-label">Used from grid today</div>
+                <div id="energy-imported-today" class="energy-value">0.00 kWh</div>
+            </div>
+        </article>
+        <article class="energy-card energy-card--solar">
+            <i class="fas fa-sun" aria-hidden="true"></i>
+            <div>
+                <div class="energy-label">Solar produced today</div>
+                <div id="solar-generated-today" class="energy-value">0.00 kWh</div>
+            </div>
+        </article>
+        <article class="energy-card energy-card--direct-solar">
+            <i class="fas fa-solar-panel" aria-hidden="true"></i>
+            <div>
+                <div class="energy-label">Direct solar use</div>
+                <div id="direct-solar-today" class="energy-value">0.00 kWh</div>
+            </div>
+        </article>
+    </aside>
+
     <section class="diagram-board" aria-label="Power flow diagram">
         <svg class="diagram-flow" viewBox="0 0 760 760" role="img" aria-hidden="true">
             <g>
@@ -68,14 +100,7 @@
         </div>
     </section>
 
-    <section class="daily-energy" aria-label="Today's energy totals">
-        <article class="energy-card energy-card--used">
-            <i class="fas fa-house" aria-hidden="true"></i>
-            <div>
-                <div class="energy-label">Home used today</div>
-                <div id="energy-used-today" class="energy-value">0.00 kWh</div>
-            </div>
-        </article>
+    <aside class="daily-energy daily-energy--right" aria-label="Today's grid and self-sufficiency totals">
         <article class="energy-card energy-card--exported">
             <i class="fas fa-arrow-up-right-from-square" aria-hidden="true"></i>
             <div>
@@ -83,8 +108,30 @@
                 <div id="energy-exported-today" class="energy-value">0.00 kWh</div>
             </div>
         </article>
-    </section>
-    <p class="energy-note">Calculated from realtime samples while the dashboard is running.</p>
+        <article class="energy-card energy-card--autarky">
+            <i class="fas fa-leaf" aria-hidden="true"></i>
+            <div>
+                <div class="energy-label">Self-sufficient today</div>
+                <div id="self-sufficiency-today" class="energy-value">-- %</div>
+            </div>
+        </article>
+        <article class="energy-card energy-card--self-use">
+            <i class="fas fa-recycle" aria-hidden="true"></i>
+            <div>
+                <div class="energy-label">Solar used locally</div>
+                <div id="self-consumption-today" class="energy-value">-- %</div>
+            </div>
+        </article>
+        <article class="energy-card energy-card--savings">
+            <i class="fas fa-coins" aria-hidden="true"></i>
+            <div>
+                <div class="energy-label">Estimated value today</div>
+                <div id="estimated-value-today" class="energy-value">€0.00</div>
+            </div>
+        </article>
+    </aside>
+    </div>
+    <p class="energy-note">Calculated from realtime samples while the dashboard is running. Self-sufficiency is the share of home use supplied without the grid.</p>
 </main>
 
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
