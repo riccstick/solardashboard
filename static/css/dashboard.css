@@ -1,7 +1,10 @@
 body {
     margin: 0;
     font-family: "Avenir Next", "Segoe UI", Arial, sans-serif;
-    background: #000000;
+    min-height: 100vh;
+    background:
+        radial-gradient(circle at 50% 42%, rgba(27, 55, 68, 0.32), transparent 36%),
+        linear-gradient(145deg, #050708 0%, #090d10 52%, #050708 100%);
     text-align: center;
     color: #233243;
 }
@@ -21,7 +24,7 @@ body {
 
 .panel-header {
     padding: 14px 0 10px;
-    border-bottom: 3px solid #ebebe7;
+    border-bottom: 1px solid rgba(143, 174, 185, 0.2);
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -62,6 +65,16 @@ body {
     margin: 0 auto;
 }
 
+.diagram-board::before {
+    content: "";
+    position: absolute;
+    inset: 15%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(87, 151, 174, 0.08), transparent 68%);
+    filter: blur(10px);
+    pointer-events: none;
+}
+
 .diagram-flow {
     position: absolute;
     inset: 0;
@@ -72,38 +85,49 @@ body {
 
 .flow-track {
     fill: none;
-    stroke: #d4d3ce;
-    stroke-width: 2.6;
+    stroke: rgba(144, 169, 176, 0.3);
+    stroke-width: 2;
     stroke-linecap: round;
+    stroke-dasharray: 3 8;
 }
 
 .flow-dot {
-    filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.12));
+    filter: drop-shadow(0 0 7px currentColor);
 }
 
 .flow-dot--pv {
     fill: #f4bb11;
+    color: #f4bb11;
 }
 
 .flow-dot--house {
     fill: #77b2d6;
+    color: #77b2d6;
 }
 
 .flow-dot--battery-charge {
     fill: #66bf54;
+    color: #66bf54;
 }
 
 .flow-dot--battery-discharge {
     fill: #66bf54;
+    color: #66bf54;
 }
 
 .flow-dot--grid-import {
     fill: #a7a7a7;
+    color: #a7a7a7;
 }
 
 .flow-dot--grid-export {
     fill: #a7a7a7;
+    color: #a7a7a7;
 }
+
+.flow-dot--car { fill: #7cbfe5; color: #7cbfe5; }
+.flow-track--car { opacity: 0; }
+.flow-track--car.is-visible { opacity: 1; }
 
 .node {
     --accent: #c8c8c8;
@@ -111,6 +135,15 @@ body {
     width: 25%;
     max-width: 180px;
     transform: translate(-50%, -50%);
+}
+
+.node-caption {
+    margin-top: 18px;
+    color: #69777b;
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
 }
 
 .node--pv {
@@ -128,7 +161,7 @@ body {
 .node--grid {
     --accent: #9a9a9a;
     top: 77.6%;
-    left: 18.4%;
+    left: 22.4%;
 }
 
 .node--battery {
@@ -137,11 +170,33 @@ body {
     left: 77.6%;
 }
 
+.node--car {
+    --accent: #7cbfe5;
+    top: 17%;
+    left: 50%;
+    visibility: hidden;
+    opacity: 0;
+    transition: opacity 0.35s ease;
+}
+
+.node--car.is-visible {
+    visibility: visible;
+    opacity: 1;
+}
+
+.node--car .circle {
+    width: clamp(82px, 13vw, 116px);
+    height: clamp(82px, 13vw, 116px);
+    font-size: clamp(2rem, 4vw, 3rem);
+}
+
 .value {
     margin-bottom: 18px;
     color: var(--accent);
     font-size: clamp(1.4rem, 3.2vw, 2.35rem);
-    font-weight: 500;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    text-shadow: 0 0 18px color-mix(in srgb, var(--accent) 45%, transparent);
     line-height: 1;
 }
 
@@ -155,18 +210,24 @@ body {
     align-items: center;
     justify-content: center;
     font-size: clamp(2.4rem, 5vw, 4rem);
-    color: var(--accent);
-    background: #fff;
-    border: 2px solid color-mix(in srgb, var(--accent) 45%, #ffffff);
-    box-shadow: 0 0 0 12px rgba(255, 255, 255, 0.64);
+    color: color-mix(in srgb, var(--accent) 92%, #ffffff);
+    background:
+        radial-gradient(circle at 38% 30%, rgba(255, 255, 255, 0.1), transparent 28%),
+        radial-gradient(circle, color-mix(in srgb, var(--accent) 9%, #12191d) 0%, #0c1114 72%);
+    border: 1px solid color-mix(in srgb, var(--accent) 66%, #263238);
+    box-shadow:
+        0 0 0 8px rgba(12, 18, 21, 0.82),
+        0 0 0 9px color-mix(in srgb, var(--accent) 18%, transparent),
+        0 0 34px color-mix(in srgb, var(--accent) 16%, transparent),
+        inset 0 0 26px rgba(0, 0, 0, 0.42);
 }
 
 .circle::after {
     content: "";
     position: absolute;
-    inset: 12px;
+    inset: 9px;
     border-radius: 50%;
-    border: 1px solid color-mix(in srgb, var(--accent) 35%, #ffffff);
+    border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
 .battery {
@@ -177,8 +238,8 @@ body {
     position: absolute;
     inset: auto 0 0 0;
     height: 0%;
-    background: linear-gradient(to top, #78cf66, #c8eebf);
-    opacity: 0.34;
+    background: linear-gradient(to top, #2f8d5a, #69c57d);
+    opacity: 0.24;
     transition: height 0.6s ease, background 0.4s ease;
 }
 
@@ -189,6 +250,7 @@ body {
     flex-direction: column;
     align-items: center;
     gap: 4px;
+    transform: translateY(-5px);
 }
 
 .battery-content i {
@@ -201,7 +263,7 @@ body {
 }
 
 .battery-temperature {
-    color: #526657;
+    color: #8ca397;
     font-size: clamp(0.72rem, 1.5vw, 1rem);
     font-weight: 600;
     line-height: 1;
@@ -215,25 +277,21 @@ body {
 }
 
 .hub-outer {
-    width: clamp(126px, 21vw, 172px);
-    height: clamp(126px, 21vw, 172px);
+    width: clamp(58px, 8vw, 76px);
+    height: clamp(58px, 8vw, 76px);
     border-radius: 50%;
     display: grid;
     place-items: center;
-    background: rgba(255, 255, 255, 0.92);
-    border: 2px solid #d6d5d0;
-}
-
-.hub-inner {
-    width: 62%;
-    height: 62%;
-    border-radius: 50%;
-    display: grid;
-    place-items: center;
-    background: #fff;
-    border: 2px solid #d6d5d0;
-    color: #454b51;
-    font-size: clamp(2rem, 4vw, 3rem);
+    background: radial-gradient(circle at 40% 32%, #233139, #0d1317 70%);
+    border: 1px solid rgba(126, 176, 194, 0.52);
+    box-shadow:
+        0 0 0 6px rgba(8, 14, 17, 0.86),
+        0 0 0 7px rgba(98, 163, 186, 0.14),
+        0 0 28px rgba(69, 151, 181, 0.22),
+        inset 0 0 16px rgba(0, 0, 0, 0.5);
+    color: #84d2ed;
+    font-size: clamp(1.2rem, 2.2vw, 1.65rem);
+    text-shadow: 0 0 18px rgba(87, 190, 226, 0.55);
 }
 
 .daily-energy {
@@ -248,10 +306,11 @@ body {
     gap: 16px;
     min-width: 0;
     padding: 18px;
-    border: 1px solid #292d31;
+    border: 1px solid rgba(108, 131, 138, 0.2);
     border-radius: 14px;
-    background: #111315;
+    background: linear-gradient(135deg, rgba(20, 27, 31, 0.94), rgba(12, 17, 20, 0.96));
     text-align: left;
+    box-shadow: inset 0 1px rgba(255, 255, 255, 0.025);
 }
 
 .energy-card > i {
@@ -282,9 +341,8 @@ body {
     color: #66bf54;
 }
 
-.energy-card--savings > i {
-    color: #d8b958;
-}
+.energy-card--car > i { color: #7cbfe5; }
+.energy-card[hidden] { display: none; }
 
 .energy-label {
     margin-bottom: 4px;
@@ -296,6 +354,14 @@ body {
     color: #e3e5e4;
     font-size: clamp(1.2rem, 2vw, 1.7rem);
     font-weight: 600;
+    white-space: nowrap;
+}
+
+.energy-secondary {
+    margin-top: 5px;
+    color: #7f8783;
+    font-size: 0.78rem;
+    font-weight: 500;
     white-space: nowrap;
 }
 

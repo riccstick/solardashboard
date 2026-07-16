@@ -6,6 +6,7 @@ const FLOW_CONFIG = {
     house: { node: "#house .circle", track: "track-house", layer: "flow-house" },
     battery: { node: "#battery .circle", track: "track-battery", layer: "flow-battery" },
     grid: { node: "#grid .circle", track: "track-grid", layer: "flow-grid" },
+    car: { node: "#car .circle", track: "track-car", layer: "flow-car" },
 };
 
 const flowState = new Map();
@@ -41,9 +42,43 @@ function formatPercentage(value) {
     return Number.isFinite(percentage) ? `${percentage.toFixed(1)} %` : "-- %";
 }
 
-function formatMoney(value, currency = "€") {
-    const amount = Number(value);
-    return `${currency}${Number.isFinite(amount) ? amount.toFixed(2) : "0.00"}`;
+function setPeriodValues(period24h, period7d) {
+    if (!period24h || !period7d) return;
+    const values = [
+        ["energy-used", "energy_used_kwh", formatEnergy],
+        ["energy-exported", "energy_exported_kwh", formatEnergy],
+        ["energy-imported", "energy_imported_kwh", formatEnergy],
+        ["solar-generated", "solar_generated_kwh", formatEnergy],
+        ["direct-solar", "direct_solar_kwh", formatEnergy],
+        ["self-sufficiency", "self_sufficiency_pct", formatPercentage],
+        ["self-consumption", "self_consumption_pct", formatPercentage],
+    ];
+    values.forEach(([id, key, formatter]) => {
+        document.getElementById(`${id}-today`).textContent = formatter(period24h[key]);
+        document.getElementById(`${id}-7d`).textContent = `7 days: ${formatter(period7d[key])}`;
+    });
+}
+
+function updateWattpilot(wattpilot) {
+    const configured = Boolean(wattpilot?.configured);
+    const charging = configured && wattpilot.connected && wattpilot.status === "Charging"
+        && numberFromPower(wattpilot.power_w) >= MIN_ACTIVE_POWER_W;
+    const carNode = document.getElementById("car");
+    const carTrack = document.getElementById("track-car");
+    const energyCard = document.getElementById("wattpilot-energy-card");
+
+    carNode?.classList.toggle("is-visible", charging);
+    carTrack?.classList.toggle("is-visible", charging);
+    if (energyCard) energyCard.hidden = !configured;
+    if (!configured) return { charging: false, power: 0 };
+
+    document.getElementById("wattpilot-energy-today").textContent =
+        formatEnergy(wattpilot.energy_today_kwh);
+    document.getElementById("wattpilot-energy-7d").textContent =
+        `7 days: ${formatEnergy(wattpilot.energy_7d_kwh)}`;
+    const power = charging ? numberFromPower(wattpilot.power_w) : 0;
+    document.getElementById("p_car").textContent = formatDisplayPower(power);
+    return { charging, power };
 }
 
 function flowCountForPower(power) {
@@ -169,16 +204,8 @@ async function updateData() {
         document.getElementById("battery-temp").textContent = Number.isFinite(temperature)
             ? `${temperature.toFixed(1)} °C`
             : "-- °C";
-        document.getElementById("energy-used-today").textContent = formatEnergy(data.energy_used_today_kwh);
-        document.getElementById("energy-exported-today").textContent = formatEnergy(data.energy_exported_today_kwh);
-        document.getElementById("energy-imported-today").textContent = formatEnergy(data.energy_imported_today_kwh);
-        document.getElementById("self-sufficiency-today").textContent = formatPercentage(data.self_sufficiency_today_pct);
-        document.getElementById("solar-generated-today").textContent = formatEnergy(data.solar_generated_today_kwh);
-        document.getElementById("direct-solar-today").textContent = formatEnergy(data.direct_solar_today_kwh);
-        document.getElementById("self-consumption-today").textContent = formatPercentage(data.self_consumption_today_pct);
-        document.getElementById("estimated-value-today").textContent = formatMoney(
-            data.estimated_value_today, data.currency_symbol,
-        );
+        setPeriodValues(data.rolling_24h, data.rolling_7d);
+        const carCharging = updateWattpilot(data.wattpilot);
 
         const active = (power) => Math.abs(power) >= MIN_ACTIVE_POWER_W;
         setFlow("pv", active(pvPower), "to-hub", "flow-dot--pv", pvPower);
@@ -192,6 +219,7 @@ async function updateData() {
         // Fronius: positive P_Grid is import; negative is export.
         setFlow("grid", active(gridPower), gridPower > 0 ? "to-hub" : "to-node",
             gridPower > 0 ? "flow-dot--grid-import" : "flow-dot--grid-export", gridPower);
+        setFlow("car", carCharging.charging, "to-node", "flow-dot--car", carCharging.power);
     } catch (error) {
         console.error("Could not update dashboard:", error);
     }
