@@ -38,6 +38,26 @@ body {
     letter-spacing: 0.06em;
 }
 
+.title-group {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.simulation-badge {
+    padding: 5px 9px;
+    border: 1px solid rgba(244, 187, 17, 0.45);
+    border-radius: 999px;
+    color: #e9c965;
+    background: rgba(244, 187, 17, 0.08);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.simulation-badge[hidden] { display: none; }
+
 .clock {
     text-align: right;
     line-height: 1.25;
@@ -199,6 +219,32 @@ body {
 .node--car.is-visible {
     visibility: visible;
     opacity: 1;
+}
+
+/* Five equally spaced points on a circle around the distributor. */
+.diagram-board.has-car .node--car {
+    top: 16%;
+    left: 50%;
+}
+
+.diagram-board.has-car .node--house {
+    top: 39.5%;
+    left: 82.3%;
+}
+
+.diagram-board.has-car .node--battery {
+    top: 77.5%;
+    left: 70%;
+}
+
+.diagram-board.has-car .node--grid {
+    top: 77.5%;
+    left: 30%;
+}
+
+.diagram-board.has-car .node--pv {
+    top: 39.5%;
+    left: 17.7%;
 }
 
 .node--car .circle {

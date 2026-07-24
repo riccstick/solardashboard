@@ -15,11 +15,19 @@ load_dotenv()
 
 app = Flask(__name__)
 
+SIMULATION_MODE = os.environ.get("SIMULATION_MODE", "false").lower() in {"1", "true", "yes", "on"}
 FRONIUS_IP = os.environ.get("FRONIUS_IP", "192.168.1.142")
 STORAGE_API = f"http://{FRONIUS_IP}/solar_api/v1/GetStorageRealtimeData.cgi"
 POWERFLOW_API = f"http://{FRONIUS_IP}/solar_api/v1/GetPowerFlowRealtimeData.fcgi"
 ENERGY_STATE_FILE = Path(app.instance_path) / "daily_energy.json"
-DATABASE_FILE = Path(os.environ.get("DATABASE_PATH", Path(app.instance_path) / "solar_dashboard.db"))
+if SIMULATION_MODE:
+    DATABASE_FILE = Path(os.environ.get(
+        "SIMULATION_DATABASE_PATH", Path(app.instance_path) / "simulation.db"
+    ))
+else:
+    DATABASE_FILE = Path(os.environ.get(
+        "DATABASE_PATH", Path(app.instance_path) / "solar_dashboard.db"
+    ))
 ELECTRICITY_PRICE_PER_KWH = float(os.environ.get("ELECTRICITY_PRICE_PER_KWH", "0.30"))
 FEED_IN_TARIFF_PER_KWH = float(os.environ.get("FEED_IN_TARIFF_PER_KWH", "0.08"))
 CURRENCY_SYMBOL = os.environ.get("CURRENCY_SYMBOL", "€")
@@ -602,11 +610,102 @@ class SolarMonitor:
             return dict(self.data)
 
 
+class SimulationMonitor:
+    """Generate a repeating set of realistic live dashboard scenarios."""
+
+    CYCLE_SECONDS = 80
+
+    def __init__(self):
+        self.started_at = time.monotonic()
+
+    @staticmethod
+    def _period(used, exported, imported, solar, direct):
+        self_sufficiency = 100 * (1 - imported / used) if used else None
+        solar_local = max(0, solar - exported)
+        self_consumption = 100 * solar_local / solar if solar else None
+        return {
+            "energy_used_kwh": used,
+            "energy_exported_kwh": exported,
+            "energy_imported_kwh": imported,
+            "solar_generated_kwh": solar,
+            "direct_solar_kwh": direct,
+            "self_sufficiency_pct": round(self_sufficiency, 1) if self_sufficiency is not None else None,
+            "self_consumption_pct": round(self_consumption, 1) if self_consumption is not None else None,
+            "estimated_value": 0,
+        }
+
+    def snapshot(self):
+        elapsed = time.monotonic() - self.started_at
+        phase = elapsed % self.CYCLE_SECONDS
+
+        if phase < 16:
+            scenario = "Solar surplus · battery charging"
+            pv, load, grid, battery, car = 5600, 1100, -2100, -2400, 0
+        elif phase < 32:
+            scenario = "Cloud cover · battery supporting home"
+            pv, load, grid, battery, car = 850, 3300, 650, 1800, 0
+        elif phase < 56:
+            scenario = "Polestar charging"
+            car = 7400
+            pv, load, battery = 4900, 8800, 1200
+            grid = load - pv - battery
+        elif phase < 68:
+            scenario = "Strong export"
+            pv, load, grid, battery, car = 7200, 1350, -2850, -3000, 0
+        else:
+            scenario = "Night · battery discharge"
+            pv, load, grid, battery, car = 0, 820, 0, 820, 0
+
+        charging = car > 0
+        charge_progress = max(0, min(1, (phase - 32) / 24)) if charging else 0
+        car_soc = 61 + 7 * charge_progress
+        battery_soc = 72 + 4 * ((elapsed % 40) / 40)
+        return {
+            "simulation": True,
+            "simulation_scenario": scenario,
+            "soc": round(battery_soc, 1),
+            "temp": 24.6,
+            "p_pv": pv,
+            "p_load": -load,
+            "p_grid": grid,
+            "p_batt": battery,
+            "self_use": 78.0,
+            "currency_symbol": CURRENCY_SYMBOL,
+            "rolling_24h": self._period(18.4, 9.2, 4.1, 26.8, 12.7),
+            "rolling_7d": self._period(126.7, 58.3, 31.2, 181.5, 86.0),
+            "wattpilot": {
+                "configured": True,
+                "connected": True,
+                "name": "Simulated Wattpilot",
+                "status": "Charging" if charging else "Ready",
+                "mode": "Eco",
+                "power_w": car,
+                "energy_today_kwh": round(4.2 + charge_progress * 3.1, 2),
+                "energy_7d_kwh": 47.8,
+                "session_energy_kwh": round(charge_progress * 3.1, 2),
+            },
+            "polestar": {
+                "configured": True,
+                "connected": True,
+                "soc": round(car_soc),
+                "range_km": round(285 + charge_progress * 34),
+                "charging_status": "Charging" if charging else "Idle",
+                "updated_at": datetime.now().isoformat(),
+                "vin_suffix": "2022",
+            },
+        }
+
+
 database = EnergyDatabase(DATABASE_FILE)
 daily_energy = DailyEnergyTracker(database, ENERGY_STATE_FILE)
-wattpilot = WattpilotMonitor(WATTPILOT_IP, WATTPILOT_PASSWORD, database)
-polestar = PolestarMonitor(POLESTAR_EMAIL, POLESTAR_PASSWORD, POLESTAR_VIN)
-solar_monitor = SolarMonitor(daily_energy)
+if SIMULATION_MODE:
+    simulation_monitor = SimulationMonitor()
+    wattpilot = polestar = solar_monitor = None
+else:
+    simulation_monitor = None
+    wattpilot = WattpilotMonitor(WATTPILOT_IP, WATTPILOT_PASSWORD, database)
+    polestar = PolestarMonitor(POLESTAR_EMAIL, POLESTAR_PASSWORD, POLESTAR_VIN)
+    solar_monitor = SolarMonitor(daily_energy)
 
 
 def format_power(v):
@@ -623,13 +722,14 @@ def index():
 
 @app.route("/data")
 def data():
-    d = solar_monitor.snapshot()
+    d = simulation_monitor.snapshot() if SIMULATION_MODE else solar_monitor.snapshot()
 
     if "error" in d:
         return jsonify(d)
 
-    d["wattpilot"] = wattpilot.snapshot()
-    d["polestar"] = polestar.snapshot()
+    if not SIMULATION_MODE:
+        d["wattpilot"] = wattpilot.snapshot()
+        d["polestar"] = polestar.snapshot()
 
     # Keep signed watt values for flow direction and formatted values for
     # compatibility with existing clients.

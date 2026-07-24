@@ -18,16 +18,18 @@ cp .env.example .env
 Copy `.env.example` to `.env` and set the Fronius inverter IP there.
 
 ```bash
-FRONIUS_IP=192.168.1.142
+FRONIUS_IP=192.168.50.10
 ELECTRICITY_PRICE_PER_KWH=0.30
 FEED_IN_TARIFF_PER_KWH=0.08
 CURRENCY_SYMBOL=€
-WATTPILOT_IP=192.168.1.100
+WATTPILOT_IP=192.168.50.11
 WATTPILOT_PASSWORD=your-device-password
 DATABASE_PATH=instance/solar_dashboard.db
 POLESTAR_EMAIL=your-polestar-id-email
 POLESTAR_PASSWORD=your-polestar-id-password
 POLESTAR_VIN=your-vehicle-identification-number
+SIMULATION_MODE=false
+SIMULATION_DATABASE_PATH=instance/simulation.db
 ```
 
 The Wattpilot settings are optional. When both are present, the dashboard opens
@@ -47,6 +49,20 @@ Polestar settings are optional. When configured, the dashboard fetches the
 vehicle battery level and estimated range every ten minutes through the
 `unofficial-polestar-api` package. It uses read-only, short-lived cloud polls;
 `POLESTAR_VIN` is optional when the account contains only one vehicle.
+
+## Local simulation
+
+Run the complete dashboard without contacting an inverter, Wattpilot, or
+Polestar account:
+
+```bash
+SIMULATION_MODE=true uv run python app.py
+```
+
+Simulation mode cycles through solar surplus, battery charging and discharge,
+grid import and export, nighttime consumption, and active Polestar charging.
+It uses `instance/simulation.db` by default so test data cannot modify the live
+dashboard database. A badge in the header identifies the active scenario.
 
 Stored history is available as JSON at `/history/daily` and
 `/history/charging`.

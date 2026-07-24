@@ -69,9 +69,13 @@ function updateCar(wattpilot, polestar) {
     const carNode = document.getElementById("car");
     const carTrack = document.getElementById("track-car");
     const energyCard = document.getElementById("wattpilot-energy-card");
+    const diagram = document.querySelector(".diagram-board");
 
+    const layoutChanged = diagram?.classList.contains("has-car") !== charging;
+    diagram?.classList.toggle("has-car", charging);
     carNode?.classList.toggle("is-visible", charging);
     carTrack?.classList.toggle("is-visible", charging);
+    if (layoutChanged) calculateFlowPaths();
     if (energyCard) energyCard.hidden = !configured;
     if (!configured) return { charging: false, power: 0 };
 
@@ -252,6 +256,11 @@ async function updateData() {
         if (!response.ok) throw new Error(`Data request failed (${response.status})`);
         const data = await response.json();
         if (data.error) throw new Error(data.error);
+        const simulationBadge = document.getElementById("simulation-badge");
+        if (simulationBadge) {
+            simulationBadge.hidden = !data.simulation;
+            simulationBadge.textContent = data.simulation_scenario || "Simulation";
+        }
 
         const pvPower = powerFromData(data, "p_pv");
         const totalLoadPower = Math.abs(powerFromData(data, "p_load"));
