@@ -91,8 +91,25 @@ body {
     stroke-dasharray: 3 8;
 }
 
-.flow-dot {
-    filter: drop-shadow(0 0 7px currentColor);
+.flow-comet {
+    filter: drop-shadow(0 0 6px currentColor);
+}
+
+.flow-comet__head,
+.flow-comet__tail {
+    fill: currentColor;
+}
+
+.flow-comet__head {
+    filter: drop-shadow(0 0 4px currentColor);
+}
+
+.flow-comet__tail--inner {
+    opacity: 0.48;
+}
+
+.flow-comet__tail--outer {
+    opacity: 0.18;
 }
 
 .flow-dot--pv {

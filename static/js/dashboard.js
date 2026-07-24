@@ -1,5 +1,7 @@
 const SVG_NS = "http://www.w3.org/2000/svg";
 const MIN_ACTIVE_POWER_W = 15;
+const FLOW_LEG_DURATION_SECONDS = 1.8;
+const FLOW_CYCLE_DURATION_SECONDS = FLOW_LEG_DURATION_SECONDS * 2;
 
 const FLOW_CONFIG = {
     pv: { node: "#pv .circle", track: "track-pv", layer: "flow-pv" },
@@ -81,8 +83,23 @@ function updateWattpilot(wattpilot) {
     return { charging, power };
 }
 
-function flowCountForPower(power) {
-    return Math.max(1, Math.min(4, Math.ceil(Math.abs(power) / 2000)));
+function cometScaleForPower(power) {
+    // Use 2 kW as the normal size. Square-root scaling makes the difference
+    // visible without allowing high-power flows to overwhelm the diagram.
+    return Math.max(1.2, Math.min(2.5, Math.sqrt(Math.abs(power) / 2000)));
+}
+
+function applyCometScale(comet, scale) {
+    const outerTail = comet.querySelector(".flow-comet__tail--outer");
+    const innerTail = comet.querySelector(".flow-comet__tail--inner");
+    const head = comet.querySelector(".flow-comet__head");
+    outerTail?.setAttribute("cx", `${-15 * scale}`);
+    outerTail?.setAttribute("rx", `${18 * scale}`);
+    outerTail?.setAttribute("ry", `${4 * scale}`);
+    innerTail?.setAttribute("cx", `${-9 * scale}`);
+    innerTail?.setAttribute("rx", `${13 * scale}`);
+    innerTail?.setAttribute("ry", `${5 * scale}`);
+    head?.setAttribute("r", `${6 * scale}`);
 }
 
 function reversePath(path) {
@@ -136,21 +153,47 @@ function calculateFlowPaths() {
     flowState.clear();
 }
 
-function createAnimatedDots(layer, path, colorClass, count) {
+function createAnimatedComet(layer, path, colorClass, scale, stage) {
     layer.replaceChildren();
-    for (let index = 0; index < count; index += 1) {
-        const dot = document.createElementNS(SVG_NS, "circle");
-        dot.setAttribute("r", "8");
-        dot.setAttribute("class", `flow-dot ${colorClass}`);
+    const isInbound = stage === "inbound";
+    const comet = document.createElementNS(SVG_NS, "g");
+    comet.setAttribute("class", `flow-comet ${colorClass}`);
 
-        const motion = document.createElementNS(SVG_NS, "animateMotion");
-        motion.setAttribute("dur", "2.8s");
-        motion.setAttribute("repeatCount", "indefinite");
-        motion.setAttribute("begin", `${index * 0.55}s`);
-        motion.setAttribute("path", path);
-        dot.appendChild(motion);
-        layer.appendChild(dot);
-    }
+    const outerTail = document.createElementNS(SVG_NS, "ellipse");
+    outerTail.setAttribute("class", "flow-comet__tail flow-comet__tail--outer");
+
+    const innerTail = document.createElementNS(SVG_NS, "ellipse");
+    innerTail.setAttribute("class", "flow-comet__tail flow-comet__tail--inner");
+
+    const head = document.createElementNS(SVG_NS, "circle");
+    head.setAttribute("class", "flow-comet__head");
+
+    const motion = document.createElementNS(SVG_NS, "animateMotion");
+    motion.setAttribute("dur", `${FLOW_CYCLE_DURATION_SECONDS}s`);
+    motion.setAttribute("repeatCount", "indefinite");
+    motion.setAttribute("begin", "0s");
+    motion.setAttribute("path", path);
+    motion.setAttribute("calcMode", "linear");
+    motion.setAttribute("keyPoints", isInbound ? "0;1;1" : "0;0;1");
+    motion.setAttribute("keyTimes", "0;0.5;1");
+    motion.setAttribute("rotate", "auto");
+
+    const visibility = document.createElementNS(SVG_NS, "animate");
+    visibility.setAttribute("attributeName", "opacity");
+    visibility.setAttribute("dur", `${FLOW_CYCLE_DURATION_SECONDS}s`);
+    visibility.setAttribute("repeatCount", "indefinite");
+    visibility.setAttribute("begin", "0s");
+    visibility.setAttribute("calcMode", "discrete");
+    visibility.setAttribute("values", isInbound ? "1;0;1" : "0;1;0");
+    visibility.setAttribute("keyTimes", "0;0.5;1");
+
+    comet.appendChild(outerTail);
+    comet.appendChild(innerTail);
+    comet.appendChild(head);
+    applyCometScale(comet, scale);
+    comet.appendChild(motion);
+    comet.appendChild(visibility);
+    layer.appendChild(comet);
 }
 
 function setFlow(name, active, direction, colorClass, power) {
@@ -159,14 +202,19 @@ function setFlow(name, active, direction, colorClass, power) {
     const basePath = flowPaths[name];
     if (!layer || !basePath) return;
 
-    const count = active ? flowCountForPower(power) : 0;
+    const scale = cometScaleForPower(power);
     const path = direction === "to-node" ? reversePath(basePath) : basePath;
-    const signature = active ? `${path}|${colorClass}|${count}` : "off";
-    if (flowState.get(name) === signature) return;
+    const stage = direction === "to-hub" ? "inbound" : "outbound";
+    const signature = active ? `${path}|${colorClass}|${stage}` : "off";
+    if (flowState.get(name) === signature) {
+        const comet = layer.querySelector(".flow-comet");
+        if (comet) applyCometScale(comet, scale);
+        return;
+    }
 
     flowState.set(name, signature);
     if (!active) layer.replaceChildren();
-    else createAnimatedDots(layer, path, colorClass, count);
+    else createAnimatedComet(layer, path, colorClass, scale, stage);
 }
 
 function updateClock() {
