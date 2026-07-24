@@ -10,6 +10,7 @@ dependencies = [
     "requests>=2.32.0",
     "urllib3<2; python_version < '3.10'",
     "wattpilot-api>=1.4.0",
+    "unofficial-polestar-api>=0.3.0,<0.4",
 ]
 
 [tool.uv]

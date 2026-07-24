@@ -53,7 +53,6 @@ function setPeriodValues(period24h, period7d) {
         ["solar-generated", "solar_generated_kwh", formatEnergy],
         ["direct-solar", "direct_solar_kwh", formatEnergy],
         ["self-sufficiency", "self_sufficiency_pct", formatPercentage],
-        ["self-consumption", "self_consumption_pct", formatPercentage],
     ];
     values.forEach(([id, key, formatter]) => {
         document.getElementById(`${id}-today`).textContent = formatter(period24h[key]);
@@ -61,9 +60,11 @@ function setPeriodValues(period24h, period7d) {
     });
 }
 
-function updateWattpilot(wattpilot) {
-    const configured = Boolean(wattpilot?.configured);
-    const charging = configured && wattpilot.connected && wattpilot.status === "Charging"
+function updateCar(wattpilot, polestar) {
+    const wattpilotConfigured = Boolean(wattpilot?.configured);
+    const polestarConfigured = Boolean(polestar?.configured);
+    const configured = wattpilotConfigured || polestarConfigured;
+    const charging = wattpilotConfigured && wattpilot.connected && wattpilot.status === "Charging"
         && numberFromPower(wattpilot.power_w) >= MIN_ACTIVE_POWER_W;
     const carNode = document.getElementById("car");
     const carTrack = document.getElementById("track-car");
@@ -74,10 +75,28 @@ function updateWattpilot(wattpilot) {
     if (energyCard) energyCard.hidden = !configured;
     if (!configured) return { charging: false, power: 0 };
 
-    document.getElementById("wattpilot-energy-today").textContent =
-        formatEnergy(wattpilot.energy_today_kwh);
-    document.getElementById("wattpilot-energy-7d").textContent =
-        `7 days: ${formatEnergy(wattpilot.energy_7d_kwh)}`;
+    if (wattpilotConfigured) {
+        document.getElementById("wattpilot-energy-today").textContent =
+            formatEnergy(wattpilot.energy_today_kwh);
+        document.getElementById("wattpilot-energy-7d").textContent =
+            `7 days: ${formatEnergy(wattpilot.energy_7d_kwh)}`;
+    }
+    const polestarCard = document.getElementById("polestar-card");
+    const soc = Number(polestar?.soc);
+    const range = Number(polestar?.range_km);
+    if (polestarCard) {
+        polestarCard.hidden = !polestarConfigured;
+        document.getElementById("polestar-card-soc").textContent =
+            polestar?.connected && Number.isFinite(soc) ? `${soc.toFixed(0)} %` : "-- %";
+        document.getElementById("polestar-card-range").textContent =
+            `Range: ${polestar?.connected && Number.isFinite(range) ? range.toFixed(0) : "--"} km`;
+        document.getElementById("polestar-card-status").textContent = polestar?.connected
+            ? `Status: ${polestar.charging_status || "Connected"}`
+            : "Polestar data unavailable";
+    }
+    document.getElementById("polestar-soc").textContent = Number.isFinite(soc)
+        ? `${soc.toFixed(0)}%`
+        : "--%";
     const power = charging ? numberFromPower(wattpilot.power_w) : 0;
     document.getElementById("p_car").textContent = formatDisplayPower(power);
     return { charging, power };
@@ -253,7 +272,7 @@ async function updateData() {
             ? `${temperature.toFixed(1)} °C`
             : "-- °C";
         setPeriodValues(data.rolling_24h, data.rolling_7d);
-        const carCharging = updateWattpilot(data.wattpilot);
+        const carCharging = updateCar(data.wattpilot, data.polestar);
 
         const active = (power) => Math.abs(power) >= MIN_ACTIVE_POWER_W;
         setFlow("pv", active(pvPower), "to-hub", "flow-dot--pv", pvPower);

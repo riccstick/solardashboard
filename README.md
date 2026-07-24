@@ -21,6 +21,9 @@ CURRENCY_SYMBOL=€
 WATTPILOT_IP=192.168.1.100
 WATTPILOT_PASSWORD=your-device-password
 DATABASE_PATH=instance/solar_dashboard.db
+POLESTAR_EMAIL=your-polestar-id-email
+POLESTAR_PASSWORD=your-polestar-id-password
+POLESTAR_VIN=your-vehicle-identification-number
 ```
 
 The Wattpilot settings are optional. When both are present, the dashboard opens
@@ -35,6 +38,11 @@ The optional `DATABASE_PATH` setting can place the database elsewhere.
 Wattpilot energy delivered to the car is integrated from live charging power
 into five-minute buckets. The dashboard shows today's total, the last seven
 calendar days, and a live car node only while charging is active.
+
+Polestar settings are optional. When configured, the dashboard fetches the
+vehicle battery level and estimated range every ten minutes through the
+`unofficial-polestar-api` package. It uses read-only, short-lived cloud polls;
+`POLESTAR_VIN` is optional when the account contains only one vehicle.
 
 Stored history is available as JSON at `/history/daily` and
 `/history/charging`.

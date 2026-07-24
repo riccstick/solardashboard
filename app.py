@@ -25,6 +25,9 @@ FEED_IN_TARIFF_PER_KWH = float(os.environ.get("FEED_IN_TARIFF_PER_KWH", "0.08"))
 CURRENCY_SYMBOL = os.environ.get("CURRENCY_SYMBOL", "€")
 WATTPILOT_IP = os.environ.get("WATTPILOT_IP")
 WATTPILOT_PASSWORD = os.environ.get("WATTPILOT_PASSWORD")
+POLESTAR_EMAIL = os.environ.get("POLESTAR_EMAIL")
+POLESTAR_PASSWORD = os.environ.get("POLESTAR_PASSWORD")
+POLESTAR_VIN = os.environ.get("POLESTAR_VIN")
 
 
 class EnergyDatabase:
@@ -330,6 +333,81 @@ class WattpilotMonitor:
         return snapshot
 
 
+class PolestarMonitor:
+    """Poll read-only Polestar 2 battery telemetry from the Polestar cloud."""
+
+    def __init__(self, email, password, vin=None, interval=600):
+        self.email = email
+        self.password = password
+        self.vin = vin
+        self.interval = interval
+        self.lock = threading.Lock()
+        self.data = {"configured": bool(email and password), "connected": False}
+        if self.data["configured"]:
+            threading.Thread(target=self._run, name="polestar-monitor", daemon=True).start()
+
+    def _run(self):
+        asyncio.run(self._poll_loop())
+
+    async def _poll_loop(self):
+        from polestar_api import PolestarApi
+
+        while True:
+            try:
+                # Short-lived polling avoids the long-running streams used by
+                # the full Home Assistant integration.
+                async with PolestarApi(email=self.email, password=self.password) as api:
+                    vehicles = await api.get_vehicles()
+                    car = next(
+                        (vehicle for vehicle in vehicles if self.vin and vehicle.vin == self.vin),
+                        vehicles[0] if vehicles else None,
+                    )
+                    if car is None:
+                        raise RuntimeError("No Polestar vehicle found for this account")
+                    battery = await car.get_battery()
+                    snapshot = {
+                        "configured": True,
+                        "connected": True,
+                        "soc": self._number(battery, "charge_level", "battery_charge_level_percentage"),
+                        "range_km": self._number(battery, "range_km", "estimated_distance_to_empty_km"),
+                        "charging_status": self._text(battery, "charging_status", "status"),
+                        "updated_at": datetime.now().isoformat(),
+                        "vin_suffix": str(getattr(car, "vin", self.vin or ""))[-4:],
+                    }
+                    with self.lock:
+                        self.data = snapshot
+            except Exception as error:
+                with self.lock:
+                    previous = dict(self.data)
+                    previous.update({"configured": True, "connected": False, "error": str(error)})
+                    self.data = previous
+            await asyncio.sleep(self.interval)
+
+    @staticmethod
+    def _number(value, *names):
+        for name in names:
+            candidate = getattr(value, name, None)
+            if candidate is not None:
+                try:
+                    return round(float(candidate), 1)
+                except (TypeError, ValueError):
+                    pass
+        return None
+
+    @staticmethod
+    def _text(value, *names):
+        for name in names:
+            candidate = getattr(value, name, None)
+            if candidate is not None:
+                enum_name = getattr(candidate, "name", None)
+                return enum_name.replace("_", " ").title() if enum_name else str(candidate)
+        return None
+
+    def snapshot(self):
+        with self.lock:
+            return dict(self.data)
+
+
 class DailyEnergyTracker:
     """Integrate realtime power samples into local daily energy totals."""
 
@@ -527,6 +605,7 @@ class SolarMonitor:
 database = EnergyDatabase(DATABASE_FILE)
 daily_energy = DailyEnergyTracker(database, ENERGY_STATE_FILE)
 wattpilot = WattpilotMonitor(WATTPILOT_IP, WATTPILOT_PASSWORD, database)
+polestar = PolestarMonitor(POLESTAR_EMAIL, POLESTAR_PASSWORD, POLESTAR_VIN)
 solar_monitor = SolarMonitor(daily_energy)
 
 
@@ -550,6 +629,7 @@ def data():
         return jsonify(d)
 
     d["wattpilot"] = wattpilot.snapshot()
+    d["polestar"] = polestar.snapshot()
 
     # Keep signed watt values for flow direction and formatted values for
     # compatibility with existing clients.
