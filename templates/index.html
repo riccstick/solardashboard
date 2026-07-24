@@ -19,21 +19,21 @@
     </header>
 
     <div class="dashboard-content">
-    <aside class="daily-energy daily-energy--left" aria-label="Energy consumption and grid totals">
-        <article class="energy-card energy-card--used">
-            <i class="fas fa-house" aria-hidden="true"></i>
+    <aside class="daily-energy daily-energy--left" aria-label="Solar production and grid totals">
+        <article class="energy-card energy-card--solar">
+            <i class="fas fa-sun" aria-hidden="true"></i>
             <div>
-                <div class="energy-label">Home used · last 24 h</div>
-                <div id="energy-used-today" class="energy-value">0.00 kWh</div>
-                <div id="energy-used-7d" class="energy-secondary">7 days: 0.00 kWh</div>
+                <div class="energy-label">Solar produced · last 24 h</div>
+                <div id="solar-generated-today" class="energy-value">0.00 kWh</div>
+                <div id="solar-generated-7d" class="energy-secondary">7 days: 0.00 kWh</div>
             </div>
         </article>
-        <article id="wattpilot-energy-card" class="energy-card energy-card--car" hidden>
-            <i class="fas fa-car-side" aria-hidden="true"></i>
+        <article class="energy-card energy-card--direct-solar">
+            <i class="fas fa-solar-panel" aria-hidden="true"></i>
             <div>
-                <div class="energy-label">Energy delivered to car today</div>
-                <div id="wattpilot-energy-today" class="energy-value">0.00 kWh</div>
-                <div id="wattpilot-energy-7d" class="energy-secondary">7 days: 0.00 kWh</div>
+                <div class="energy-label">Direct solar · last 24 h</div>
+                <div id="direct-solar-today" class="energy-value">0.00 kWh</div>
+                <div id="direct-solar-7d" class="energy-secondary">7 days: 0.00 kWh</div>
             </div>
         </article>
         <article class="energy-card energy-card--imported">
@@ -119,21 +119,30 @@
         </div>
     </section>
 
-    <aside class="daily-energy daily-energy--right" aria-label="Solar production and efficiency totals">
-        <article class="energy-card energy-card--solar">
-            <i class="fas fa-sun" aria-hidden="true"></i>
+    <aside class="daily-energy daily-energy--right" aria-label="Home, car, and efficiency totals">
+        <article class="energy-card energy-card--used">
+            <i class="fas fa-house" aria-hidden="true"></i>
             <div>
-                <div class="energy-label">Solar produced · last 24 h</div>
-                <div id="solar-generated-today" class="energy-value">0.00 kWh</div>
-                <div id="solar-generated-7d" class="energy-secondary">7 days: 0.00 kWh</div>
+                <div class="energy-label">Home used · last 24 h</div>
+                <div id="energy-used-today" class="energy-value">0.00 kWh</div>
+                <div id="energy-used-7d" class="energy-secondary">7 days: 0.00 kWh</div>
             </div>
         </article>
-        <article class="energy-card energy-card--direct-solar">
-            <i class="fas fa-solar-panel" aria-hidden="true"></i>
+        <article id="wattpilot-energy-card" class="energy-card energy-card--car" hidden>
+            <i class="fas fa-car-side" aria-hidden="true"></i>
             <div>
-                <div class="energy-label">Direct solar · last 24 h</div>
-                <div id="direct-solar-today" class="energy-value">0.00 kWh</div>
-                <div id="direct-solar-7d" class="energy-secondary">7 days: 0.00 kWh</div>
+                <div class="energy-label">Energy delivered to car today</div>
+                <div id="wattpilot-energy-today" class="energy-value">0.00 kWh</div>
+                <div id="wattpilot-energy-7d" class="energy-secondary">7 days: 0.00 kWh</div>
+            </div>
+        </article>
+        <article id="polestar-card" class="energy-card energy-card--polestar" hidden>
+            <i class="fas fa-compass" aria-hidden="true"></i>
+            <div>
+                <div class="energy-label">Polestar 2 battery</div>
+                <div id="polestar-card-soc" class="energy-value">-- %</div>
+                <div id="polestar-card-range" class="energy-value polestar-range">Range: -- km</div>
+                <div id="polestar-card-status" class="car-summary">Status unavailable</div>
             </div>
         </article>
         <article class="energy-card energy-card--autarky">
@@ -142,15 +151,6 @@
                 <div class="energy-label">Self-sufficient · last 24 h</div>
                 <div id="self-sufficiency-today" class="energy-value">-- %</div>
                 <div id="self-sufficiency-7d" class="energy-secondary">7 days: -- %</div>
-            </div>
-        </article>
-        <article id="polestar-card" class="energy-card energy-card--polestar" hidden>
-            <i class="fas fa-car-side" aria-hidden="true"></i>
-            <div>
-                <div class="energy-label">Polestar 2 battery</div>
-                <div id="polestar-card-soc" class="energy-value">-- %</div>
-                <div id="polestar-card-range" class="energy-value polestar-range">Range: -- km</div>
-                <div id="polestar-card-status" class="car-summary">Status unavailable</div>
             </div>
         </article>
     </aside>

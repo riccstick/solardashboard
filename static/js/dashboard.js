@@ -254,9 +254,13 @@ async function updateData() {
         if (data.error) throw new Error(data.error);
 
         const pvPower = powerFromData(data, "p_pv");
-        const housePower = powerFromData(data, "p_load");
+        const totalLoadPower = Math.abs(powerFromData(data, "p_load"));
         const gridPower = powerFromData(data, "p_grid");
         const batteryPower = powerFromData(data, "p_batt");
+        const carCharging = updateCar(data.wattpilot, data.polestar);
+        // The inverter's total load already includes the Wattpilot. Display the
+        // remainder in Home so charging power is represented only once.
+        const housePower = Math.max(0, totalLoadPower - carCharging.power);
 
         document.getElementById("p_pv").textContent = formatDisplayPower(pvPower);
         document.getElementById("p_load").textContent = formatDisplayPower(housePower);
@@ -272,7 +276,6 @@ async function updateData() {
             ? `${temperature.toFixed(1)} °C`
             : "-- °C";
         setPeriodValues(data.rolling_24h, data.rolling_7d);
-        const carCharging = updateCar(data.wattpilot, data.polestar);
 
         const active = (power) => Math.abs(power) >= MIN_ACTIVE_POWER_W;
         setFlow("pv", active(pvPower), "to-hub", "flow-dot--pv", pvPower);
