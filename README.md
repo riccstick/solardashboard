@@ -2,6 +2,10 @@
 
 Dashboard for solar data from the Fronius API.
 
+This is an independent community project. It is not affiliated with, endorsed
+by, or sponsored by Fronius, Wattpilot, Polestar, or Volvo Cars. Product names
+are used only to identify compatible equipment.
+
 ## Setup
 
 ```bash
@@ -93,3 +97,10 @@ uv sync
 
 This project is pinned to Python 3.12 via `.python-version` because the maintained
 Wattpilot client requires Python 3.12 or newer.
+
+## License and third-party software
+
+The project source is available under the [MIT License](LICENSE). Dependencies,
+icons, product names, and unofficial API clients remain subject to their own
+licenses and terms; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and
+[TRADEMARKS.md](TRADEMARKS.md). Never commit `.env` or Polestar credentials.

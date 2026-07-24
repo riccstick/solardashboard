@@ -221,24 +221,6 @@ body {
     font-weight: 700;
 }
 
-.polestar-mark {
-    display: block;
-    object-fit: contain;
-}
-
-.polestar-mark--sphere {
-    width: clamp(38px, 6vw, 54px);
-    height: clamp(38px, 6vw, 54px);
-    border-radius: 50%;
-}
-
-.polestar-mark--card {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    flex: 0 0 42px;
-}
-
 .value {
     margin-bottom: 18px;
     color: var(--accent);
@@ -387,6 +369,7 @@ body {
 }
 
 .energy-card--car > i { color: #7cbfe5; }
+.energy-card--polestar > i { color: #87bdd1; }
 .energy-card[hidden] { display: none; }
 
 .energy-label {
