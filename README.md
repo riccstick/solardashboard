@@ -1,6 +1,6 @@
 # solardashboard
 
-[![CI](https://github.com/riccstick/solardashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/riccstick/solardashboard/actions/workflows/ci.yml)
+[![CI](https://github.com/riccstick/solardashboard/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/riccstick/solardashboard/actions/workflows/ci.yml?query=branch%3Amain+event%3Apush)
 
 Dashboard for solar data from the Fronius API.
 
