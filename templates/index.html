@@ -1,10 +1,22 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#090d10">
+    <meta name="description" content="Live home solar production, battery, grid, and charging dashboard.">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Solar Dashboard">
     <title>Solar Dashboard</title>
 
+    <link rel="manifest" href="{{ url_for('manifest') }}">
+    <link rel="icon" href="{{ url_for('app_asset', filename='icons/icon-192.png') }}" sizes="192x192">
+    <link rel="apple-touch-icon" href="{{ url_for('app_asset', filename='icons/apple-touch-icon.png') }}">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/dashboard.css') }}">
+    <link rel="stylesheet" href="{{ url_for('app_asset', filename='pwa.css') }}">
 </head>
 
 <body>
@@ -14,6 +26,8 @@
         <div class="title-group">
             <h1>Solar Dashboard</h1>
             <span id="simulation-badge" class="simulation-badge" hidden>Simulation</span>
+            <span id="connection-status" class="connection-status" role="status" hidden>Offline</span>
+            <button id="install-app" class="install-app" type="button" hidden>Install app</button>
         </div>
         <div class="clock">
             <div id="clock-time"></div>
@@ -162,6 +176,7 @@
 </main>
 
 <script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+<script src="{{ url_for('app_asset', filename='pwa.js') }}"></script>
 
 </body>
 </html>

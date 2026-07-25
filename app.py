@@ -9,11 +9,12 @@ from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template
+from flask import Flask, jsonify, render_template, send_from_directory
 
 load_dotenv()
 
 app = Flask(__name__)
+APP_MODE_DIR = Path(app.root_path) / "app_mode" / "pwa"
 
 SIMULATION_MODE = os.environ.get("SIMULATION_MODE", "false").lower() in {"1", "true", "yes", "on"}
 FRONIUS_IP = os.environ.get("FRONIUS_IP", "192.168.1.142")
@@ -720,6 +721,30 @@ def index():
     return render_template("index.html")
 
 
+@app.route("/manifest.webmanifest")
+def manifest():
+    return send_from_directory(
+        APP_MODE_DIR, "manifest.webmanifest", mimetype="application/manifest+json"
+    )
+
+
+@app.route("/app-assets/<path:filename>")
+def app_asset(filename):
+    return send_from_directory(APP_MODE_DIR, filename)
+
+
+@app.route("/service-worker.js")
+def service_worker():
+    response = send_from_directory(
+        APP_MODE_DIR,
+        "service-worker.js",
+        mimetype="application/javascript",
+    )
+    response.headers["Cache-Control"] = "no-cache"
+    response.headers["Service-Worker-Allowed"] = "/"
+    return response
+
+
 @app.route("/data")
 def data():
     d = simulation_monitor.snapshot() if SIMULATION_MODE else solar_monitor.snapshot()
@@ -751,4 +776,9 @@ def charging_history():
 
 
 if __name__ == "__main__":
-    app.run(debug=True, use_reloader=False)
+    app.run(
+        host=os.environ.get("HOST", "127.0.0.1"),
+        port=int(os.environ.get("PORT", "8000")),
+        debug=True,
+        use_reloader=False,
+    )

@@ -1,3 +1,4 @@
+import atexit
 import os
 import tempfile
 import unittest
@@ -8,12 +9,14 @@ from unittest.mock import Mock, patch
 # Importing app.py normally starts the hardware monitor threads. Simulation mode
 # keeps unit tests hermetic and avoids network access.
 _IMPORT_TEMP_DIR = tempfile.TemporaryDirectory()
+atexit.register(_IMPORT_TEMP_DIR.cleanup)
 os.environ["SIMULATION_MODE"] = "true"
 os.environ["SIMULATION_DATABASE_PATH"] = str(
     Path(_IMPORT_TEMP_DIR.name) / "import.db"
 )
 
 import app as dashboard  # noqa: E402
+from scripts import configure as config_wizard  # noqa: E402
 
 
 class EnergyDatabaseTests(unittest.TestCase):
@@ -221,6 +224,154 @@ class ApiAndRouteTests(unittest.TestCase):
         self.assertEqual(payload["p_pv"], "2.50 kW")
         self.assertEqual(payload["p_grid_w"], -900)
         self.assertEqual(payload["p_grid"], "-900 W")
+
+    def test_manifest_route_serves_install_metadata(self):
+        with dashboard.app.test_client() as client:
+            response = client.get("/manifest.webmanifest")
+            self.addCleanup(response.close)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/manifest+json")
+        manifest = response.get_json()
+        self.assertEqual(manifest["name"], "Solar Dashboard")
+        self.assertEqual(manifest["display"], "standalone")
+        self.assertEqual(manifest["scope"], "/")
+        self.assertEqual(
+            {icon["sizes"] for icon in manifest["icons"]},
+            {"192x192", "512x512"},
+        )
+
+    def test_index_advertises_pwa_and_registration_script(self):
+        with dashboard.app.test_client() as client:
+            response = client.get("/")
+
+        html = response.get_data(as_text=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('rel="manifest" href="/manifest.webmanifest"', html)
+        self.assertIn('rel="apple-touch-icon"', html)
+        self.assertIn('name="theme-color"', html)
+        self.assertIn('href="/app-assets/pwa.css"', html)
+        self.assertIn('src="/app-assets/pwa.js"', html)
+        self.assertIn('id="install-app"', html)
+
+    def test_pwa_static_assets_are_available(self):
+        assets = (
+            ("/app-assets/icons/icon-192.png", "image/png"),
+            ("/app-assets/icons/icon-512.png", "image/png"),
+            ("/app-assets/icons/apple-touch-icon.png", "image/png"),
+            ("/app-assets/offline.html", "text/html"),
+            ("/app-assets/pwa.css", "text/css"),
+            ("/app-assets/pwa.js", "text/javascript"),
+        )
+
+        with dashboard.app.test_client() as client:
+            for path, mimetype in assets:
+                with self.subTest(path=path):
+                    response = client.get(path)
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.mimetype, mimetype)
+                    response.close()
+
+    def test_service_worker_route_allows_root_scope_and_disables_http_cache(self):
+        with dashboard.app.test_client() as client:
+            response = client.get("/service-worker.js")
+            self.addCleanup(response.close)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, "application/javascript")
+        self.assertEqual(response.headers["Service-Worker-Allowed"], "/")
+        self.assertIn("no-cache", response.headers["Cache-Control"])
+        service_worker = response.get_data(as_text=True)
+        self.assertIn('"/app-assets/offline.html"', service_worker)
+        self.assertIn('url.pathname === "/data"', service_worker)
+
+
+class MacLauncherTests(unittest.TestCase):
+    def test_launchers_are_executable_and_start_the_dashboard(self):
+        project_dir = Path(__file__).parent.parent
+        launchers = (
+            project_dir / "app_mode" / "macos" / "Start Solar Dashboard.command",
+            project_dir
+            / "app_mode"
+            / "macos"
+            / "Start Solar Dashboard Simulation.command",
+        )
+
+        for launcher in launchers:
+            with self.subTest(launcher=launcher.name):
+                self.assertTrue(os.access(launcher, os.X_OK))
+                script = launcher.read_text()
+                self.assertTrue(script.startswith("#!/bin/zsh"))
+                self.assertIn("exec uv run python app.py", script)
+                self.assertIn('open "$DASHBOARD_URL"', script)
+
+    def test_simulation_launcher_enables_simulation_only(self):
+        project_dir = Path(__file__).parent.parent
+        live = (
+            project_dir / "app_mode" / "macos" / "Start Solar Dashboard.command"
+        ).read_text()
+        simulation = (
+            project_dir
+            / "app_mode"
+            / "macos"
+            / "Start Solar Dashboard Simulation.command"
+        ).read_text()
+
+        self.assertNotIn("SIMULATION_MODE=true", live)
+        self.assertIn("export SIMULATION_MODE=true", simulation)
+
+    def test_configuration_launcher_runs_wizard(self):
+        launcher = (
+            Path(__file__).parent.parent
+            / "app_mode"
+            / "macos"
+            / "Configure Solar Dashboard.command"
+        )
+
+        self.assertTrue(os.access(launcher, os.X_OK))
+        self.assertIn("uv run python scripts/configure.py", launcher.read_text())
+
+
+class ConfigurationWizardTests(unittest.TestCase):
+    def test_validators_reject_invalid_network_and_price_values(self):
+        with self.assertRaises(ValueError):
+            config_wizard.validate_host("http://192.168.1.10")
+        with self.assertRaises(ValueError):
+            config_wizard.validate_non_negative_number("-0.1")
+        with self.assertRaises(ValueError):
+            config_wizard.validate_port("70000")
+
+        self.assertEqual(config_wizard.validate_host("inverter.local"), "inverter.local")
+        self.assertEqual(config_wizard.validate_non_negative_number("0.30"), "0.30")
+        self.assertEqual(config_wizard.validate_port("8000"), "8000")
+
+    def test_rendered_configuration_quotes_values_and_never_omits_settings(self):
+        content = config_wizard.render_env(
+            {
+                "FRONIUS_IP": "192.168.1.10",
+                "WATTPILOT_PASSWORD": 'secret "value"',
+                "CURRENCY_SYMBOL": "€",
+            }
+        )
+
+        self.assertIn('FRONIUS_IP="192.168.1.10"', content)
+        self.assertIn('WATTPILOT_PASSWORD="secret \\"value\\""', content)
+        self.assertIn('CURRENCY_SYMBOL="€"', content)
+        for setting in config_wizard.SETTING_ORDER:
+            self.assertIn(f"{setting}=", content)
+
+    def test_save_creates_backup_before_replacing_existing_configuration(self):
+        with tempfile.TemporaryDirectory() as temp_dir:
+            env_file = Path(temp_dir) / ".env"
+            env_file.write_text('FRONIUS_IP="old"\n')
+
+            backup = config_wizard.save_env(
+                env_file, 'FRONIUS_IP="192.168.1.10"\n'
+            )
+
+            self.assertIsNotNone(backup)
+            self.assertEqual(backup.read_text(), 'FRONIUS_IP="old"\n')
+            self.assertEqual(env_file.read_text(), 'FRONIUS_IP="192.168.1.10"\n')
 
 
 if __name__ == "__main__":

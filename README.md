@@ -17,7 +17,18 @@ cp .env.example .env
 
 ## Configuration
 
-Copy `.env.example` to `.env` and set the Fronius inverter IP there.
+Run the guided setup wizard:
+
+```bash
+uv run python scripts/configure.py
+```
+
+On macOS, the same wizard can be opened by double-clicking
+`app_mode/macos/Configure Solar Dashboard.command`. It explains each setting,
+validates entries, hides passwords while typing, preserves current values, and
+backs up an existing `.env` before replacing it.
+
+Alternatively, copy `.env.example` to `.env` and edit it manually.
 
 ```bash
 FRONIUS_IP=192.168.50.10
@@ -61,10 +72,20 @@ Polestar account:
 SIMULATION_MODE=true uv run python app.py
 ```
 
+Then open `http://localhost:8000`. The port can be changed with the optional
+`PORT` environment variable.
+
 Simulation mode cycles through solar surplus, battery charging and discharge,
 grid import and export, nighttime consumption, and active Polestar charging.
 It uses `instance/simulation.db` by default so test data cannot modify the live
 dashboard database. A badge in the header identifies the active scenario.
+
+## Optional app mode
+
+The core project is a browser-based solar dashboard. Optional PWA installation,
+offline behavior, app icons, and clickable macOS launchers are isolated in
+[`app_mode/`](app_mode/README.md). These conveniences do not change solar-data
+collection or calculations.
 
 Stored history is available as JSON at `/history/daily` and
 `/history/charging`.
@@ -79,9 +100,24 @@ match your contract so the dashboard's estimated daily value is meaningful.
 .
 ├── .env.example
 ├── .python-version
+├── app_mode
+│   ├── macos
+│   │   ├── Configure Solar Dashboard.command
+│   │   ├── Start Solar Dashboard.command
+│   │   └── Start Solar Dashboard Simulation.command
+│   ├── pwa
+│   │   ├── icons
+│   │   ├── manifest.webmanifest
+│   │   ├── offline.html
+│   │   ├── pwa.css
+│   │   ├── pwa.js
+│   │   └── service-worker.js
+│   └── README.md
 ├── app.py
 ├── pyproject.toml
 ├── README.md
+├── scripts
+│   └── configure.py
 ├── static
 │   ├── css
 │   │   └── dashboard.css

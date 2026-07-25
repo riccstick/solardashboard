@@ -1,0 +1,43 @@
+.connection-status,
+.install-app {
+    padding: 5px 9px;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.connection-status {
+    border: 1px solid rgba(214, 115, 103, 0.5);
+    color: #efafa7;
+    background: rgba(150, 50, 40, 0.14);
+    text-transform: uppercase;
+}
+
+.install-app {
+    border: 1px solid rgba(119, 178, 214, 0.5);
+    color: #b9e3fb;
+    background: rgba(44, 101, 131, 0.18);
+    font-family: inherit;
+    cursor: pointer;
+}
+
+.install-app:hover {
+    background: rgba(55, 125, 161, 0.3);
+}
+
+.connection-status[hidden],
+.install-app[hidden] {
+    display: none;
+}
+
+@media (max-width: 560px) {
+    .panel-header {
+        align-items: flex-start;
+    }
+
+    .title-group {
+        flex-wrap: wrap;
+        text-align: left;
+    }
+}

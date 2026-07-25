@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#090d10">
+    <title>Solar Dashboard · Offline</title>
+    <style>
+        :root { color-scheme: dark; }
+        body {
+            min-height: 100vh;
+            margin: 0;
+            display: grid;
+            place-items: center;
+            background: radial-gradient(circle at 50% 35%, #182d38, #050708 58%);
+            color: #e3e5e4;
+            font-family: "Avenir Next", "Segoe UI", Arial, sans-serif;
+            text-align: center;
+        }
+        main { max-width: 28rem; padding: 2rem; }
+        img { width: 112px; height: 112px; border-radius: 24px; }
+        h1 { margin: 1.25rem 0 0.5rem; font-weight: 600; }
+        p { color: #9ba5a2; line-height: 1.6; }
+        button {
+            margin-top: 0.75rem;
+            padding: 0.75rem 1rem;
+            border: 1px solid #497d91;
+            border-radius: 999px;
+            color: #c5ecfa;
+            background: #10242d;
+            font: inherit;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <img src="/app-assets/icons/icon-192.png" alt="">
+        <h1>Dashboard offline</h1>
+        <p>Reconnect to the home network to retrieve live inverter data.</p>
+        <button type="button" onclick="window.location.reload()">Try again</button>
+    </main>
+</body>
+</html>
