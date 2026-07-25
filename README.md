@@ -1,5 +1,7 @@
 # solardashboard
 
+[![CI](https://github.com/riccstick/solardashboard/actions/workflows/ci.yml/badge.svg)](https://github.com/riccstick/solardashboard/actions/workflows/ci.yml)
+
 Dashboard for solar data from the Fronius API.
 
 This is an independent community project. It is not affiliated with, endorsed
@@ -107,6 +109,18 @@ uv sync
 # Upgrade dependencies and refresh the lockfile
 uv lock --upgrade
 uv sync
+```
+
+Run the unit tests without requiring live solar hardware:
+
+```bash
+uv run python -m unittest discover -v
+```
+
+Lint the Python source and tests:
+
+```bash
+uv run ruff check .
 ```
 
 ## Python Version
