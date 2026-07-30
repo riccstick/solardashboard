@@ -178,7 +178,7 @@ class ApiAndRouteTests(unittest.TestCase):
         }
 
         with patch.object(
-            dashboard.requests, "get", side_effect=[storage_response, flow_response]
+            dashboard.requests, "get", side_effect=[flow_response, storage_response]
         ) as get:
             result = dashboard.fetch_data()
 
