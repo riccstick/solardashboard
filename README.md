@@ -76,7 +76,7 @@ Then open `http://localhost:8000`. The port can be changed with the optional
 `PORT` environment variable.
 
 Simulation mode cycles through solar surplus, battery charging and discharge,
-grid import and export, nighttime consumption, and active Polestar charging.
+grid import and export, Smart Meter outage/backup mode, and active Polestar charging.
 It uses `instance/simulation.db` by default so test data cannot modify the live
 dashboard database. A badge in the header identifies the active scenario.
 

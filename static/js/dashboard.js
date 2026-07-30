@@ -266,6 +266,7 @@ async function updateData() {
         const totalLoadPower = Math.abs(powerFromData(data, "p_load"));
         const gridPower = powerFromData(data, "p_grid");
         const batteryPower = powerFromData(data, "p_batt");
+        const gridAvailable = data.grid_available !== false;
         const carCharging = updateCar(data.wattpilot, data.polestar);
         // The inverter's total load already includes the Wattpilot. Display the
         // remainder in Home so charging power is represented only once.
@@ -273,8 +274,15 @@ async function updateData() {
 
         document.getElementById("p_pv").textContent = formatDisplayPower(pvPower);
         document.getElementById("p_load").textContent = formatDisplayPower(housePower);
-        document.getElementById("p_grid").textContent = formatDisplayPower(gridPower);
+        document.getElementById("p_grid").textContent = gridAvailable
+            ? formatDisplayPower(gridPower)
+            : "Offline";
         document.getElementById("p_batt").textContent = formatDisplayPower(batteryPower);
+        const gridCircle = document.querySelector("#grid .circle");
+        const gridCaption = document.querySelector("#grid .node-caption");
+        gridCircle?.classList.toggle("is-offline", !gridAvailable);
+        gridCaption?.classList.toggle("is-offline", !gridAvailable);
+        if (gridCaption) gridCaption.textContent = gridAvailable ? "Grid" : "Grid meter offline";
 
         const soc = Math.max(0, Math.min(100, numberFromPower(data.soc)));
         document.getElementById("soc").textContent = `${soc.toFixed(1).replace(".0", "")}%`;
@@ -296,7 +304,7 @@ async function updateData() {
             batteryPower > 0 ? "flow-dot--battery-discharge" : "flow-dot--battery-charge", batteryPower);
 
         // Fronius: positive P_Grid is import; negative is export.
-        setFlow("grid", active(gridPower), gridPower > 0 ? "to-hub" : "to-node",
+        setFlow("grid", gridAvailable && active(gridPower), gridPower > 0 ? "to-hub" : "to-node",
             gridPower > 0 ? "flow-dot--grid-import" : "flow-dot--grid-export", gridPower);
         setFlow("car", carCharging.charging, "to-node", "flow-dot--car", carCharging.power);
     } catch (error) {

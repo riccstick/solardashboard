@@ -559,28 +559,58 @@ class DailyEnergyTracker:
             }
 
 
-def fetch_data():
-    try:
-        storage = requests.get(STORAGE_API, timeout=3).json()
-        flow = requests.get(POWERFLOW_API, timeout=3).json()
+def numeric(value, default=None):
+    """Return a finite number, accepting that Fronius may send null values."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return default
+    return float(value) if value == value and abs(value) != float("inf") else default
 
-        device_key = list(storage["Body"]["Data"].keys())[0]
-        ctrl = storage["Body"]["Data"][device_key]["Controller"]
+
+def fetch_data():
+    """Fetch all available data without making Smart Meter data mandatory."""
+    try:
+        flow = requests.get(POWERFLOW_API, timeout=3).json()
         site = flow["Body"]["Data"]["Site"]
-        cell_temperature = ctrl.get("Temperature_Cell")
+
+        pv = numeric(site.get("P_PV"), 0)
+        battery = numeric(site.get("P_Akku"), 0)
+        raw_grid = numeric(site.get("P_Grid"))
+        grid_available = raw_grid is not None
+        grid = raw_grid if grid_available else 0
+        raw_load = numeric(site.get("P_Load"))
+        load_derived = raw_load is None
+        # P_Load is negative consumption. When the Smart Meter is offline,
+        # derive backup load from the remaining power balance.
+        load = raw_load if raw_load is not None else -max(0, pv + battery + grid)
+        self_use = numeric(site.get("rel_SelfConsumption"))
+
+        soc = None
+        cell_temperature = None
+        storage_available = False
+        try:
+            storage = requests.get(STORAGE_API, timeout=3).json()
+            device_data = next(iter(storage["Body"]["Data"].values()))
+            controller = device_data.get("Controller", {})
+            soc = numeric(controller.get("StateOfCharge_Relative"))
+            cell_temperature = numeric(controller.get("Temperature_Cell"))
+            storage_available = soc is not None
+        except (KeyError, StopIteration, TypeError, ValueError, requests.RequestException):
+            pass
 
         return {
-            "soc": round(ctrl.get("StateOfCharge_Relative", 0), 1),
-            "temp": round(cell_temperature, 1) if isinstance(cell_temperature, (int, float)) else None,
-            "p_pv": round(site.get("P_PV", 0)),
-            "p_load": round(site.get("P_Load", 0)),
-            "p_grid": round(site.get("P_Grid", 0)),
-            "p_batt": round(site.get("P_Akku", 0)),
-            "self_use": round(site.get("rel_SelfConsumption", 0), 1),
+            "soc": round(soc, 1) if soc is not None else None,
+            "temp": round(cell_temperature, 1) if cell_temperature is not None else None,
+            "p_pv": round(pv),
+            "p_load": round(load),
+            "p_grid": round(grid),
+            "p_batt": round(battery),
+            "self_use": round(self_use, 1) if self_use is not None else None,
+            "grid_available": grid_available,
+            "load_derived": load_derived,
+            "storage_available": storage_available,
         }
-
-    except Exception as e:
-        return {"error": str(e)}
+    except Exception as error:
+        return {"error": str(error)}
 
 
 class SolarMonitor:
@@ -596,12 +626,41 @@ class SolarMonitor:
     def _run(self):
         while True:
             snapshot = fetch_data()
-            if "error" not in snapshot:
-                snapshot.update(self.tracker.update(
-                    snapshot["p_load"], snapshot["p_grid"],
-                    snapshot["p_pv"], snapshot["p_batt"],
-                ))
-                snapshot["rolling_24h"], snapshot["rolling_7d"] = database.rolling_summaries()
+            with self.lock:
+                previous = dict(self.data)
+
+            if "error" in snapshot:
+                if "p_pv" in previous:
+                    previous.update({
+                        "stale": True,
+                        "warning": snapshot["error"],
+                        "last_attempt_at": datetime.now().isoformat(),
+                    })
+                    snapshot = previous
+            else:
+                if snapshot["soc"] is None and previous.get("soc") is not None:
+                    snapshot["soc"] = previous["soc"]
+                    snapshot["temp"] = previous.get("temp")
+                    snapshot["storage_stale"] = True
+
+                if snapshot["grid_available"]:
+                    snapshot.update(self.tracker.update(
+                        snapshot["p_load"], snapshot["p_grid"],
+                        snapshot["p_pv"], snapshot["p_batt"],
+                    ))
+                else:
+                    snapshot["history_paused"] = True
+                    snapshot["currency_symbol"] = CURRENCY_SYMBOL
+
+                try:
+                    snapshot["rolling_24h"], snapshot["rolling_7d"] = database.rolling_summaries()
+                except sqlite3.Error as error:
+                    snapshot["warning"] = f"History unavailable: {error}"
+                    snapshot["rolling_24h"] = previous.get("rolling_24h")
+                    snapshot["rolling_7d"] = previous.get("rolling_7d")
+                snapshot["stale"] = False
+                snapshot["last_success_at"] = datetime.now().isoformat()
+
             with self.lock:
                 self.data = snapshot
             time.sleep(self.interval)
@@ -654,7 +713,7 @@ class SimulationMonitor:
             scenario = "Strong export"
             pv, load, grid, battery, car = 7200, 1350, -2850, -3000, 0
         else:
-            scenario = "Night · battery discharge"
+            scenario = "Backup mode · grid meter offline"
             pv, load, grid, battery, car = 0, 820, 0, 820, 0
 
         charging = car > 0
@@ -671,6 +730,9 @@ class SimulationMonitor:
             "p_grid": grid,
             "p_batt": battery,
             "self_use": 78.0,
+            "grid_available": phase < 68,
+            "load_derived": phase >= 68,
+            "storage_available": True,
             "currency_symbol": CURRENCY_SYMBOL,
             "rolling_24h": self._period(18.4, 9.2, 4.1, 26.8, 12.7),
             "rolling_7d": self._period(126.7, 58.3, 31.2, 181.5, 86.0),

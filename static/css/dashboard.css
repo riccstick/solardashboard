@@ -307,6 +307,20 @@ body {
     border: 1px solid color-mix(in srgb, var(--accent) 22%, transparent);
 }
 
+.circle.is-offline {
+    color: #8d9393;
+    border-color: rgba(159, 168, 168, 0.28);
+    box-shadow:
+        0 0 0 8px rgba(12, 18, 21, 0.82),
+        0 0 0 9px rgba(159, 168, 168, 0.08),
+        inset 0 0 26px rgba(0, 0, 0, 0.42);
+    filter: saturate(0.25);
+}
+
+.node-caption.is-offline {
+    color: #c58d70;
+}
+
 .battery {
     overflow: hidden;
 }
